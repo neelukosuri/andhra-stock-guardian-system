@@ -58,7 +58,6 @@ export interface AppLayoutProps {
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [userRole, setUserRole] = useState<'HQ_ADMIN' | 'DISTRICT_ADMIN'>('HQ_ADMIN'); // Default to HQ_ADMIN for now
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [groupExpanded, setGroupExpanded] = useState(true);
   const location = useLocation();
   const { toast } = useToast();
 
