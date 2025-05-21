@@ -1,552 +1,665 @@
 
 import React, { useState } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
+import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { User, District, CommunicationStaff, UserRole } from '@/types';
+import { User, District, CommunicationStaff } from '@/types';
 
 const UserManagement: React.FC = () => {
   const { 
-    users, 
-    districts, 
-    staff, 
-    addUser, 
-    updateUser, 
-    addDistrict, 
-    updateDistrict, 
-    addStaff, 
-    updateStaff 
+    users, addUser, updateUser,
+    districts, addDistrict, updateDistrict,
+    staff, addStaff, updateStaff
   } = useData();
   const { toast } = useToast();
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState('users');
-
-  // User form state
-  const [newUser, setNewUser] = useState<{
-    username: string;
-    password: string;
-    role: UserRole;
-    districtId?: string;
-  }>({
-    username: '',
-    password: '',
-    role: 'HQ_ADMIN',
-  });
-
-  // District form state
-  const [newDistrict, setNewDistrict] = useState<{
-    name: string;
-    isCommissionerateOrWing: boolean;
-  }>({
-    name: '',
-    isCommissionerateOrWing: false,
-  });
-
-  // Staff form state
-  const [newStaff, setNewStaff] = useState<{
-    gNo: string;
-    name: string;
-    rank: string;
-    placeOfPosting: string;
-    mobileNumber: string;
-  }>({
+  // Communication Staff State
+  const [newStaff, setNewStaff] = useState<Omit<CommunicationStaff, 'id' | 'createdAt' | 'updatedAt'>>({
     gNo: '',
     name: '',
     rank: '',
     placeOfPosting: '',
-    mobileNumber: '',
+    mobileNumber: ''
   });
+  const [editingStaff, setEditingStaff] = useState<CommunicationStaff | null>(null);
+  const [staffDialogOpen, setStaffDialogOpen] = useState(false);
 
-  // Handle user form input changes
-  const handleUserChange = (field: keyof typeof newUser, value: string | boolean) => {
-    setNewUser(prev => ({ ...prev, [field]: value }));
-  };
+  // Districts State
+  const [newDistrict, setNewDistrict] = useState<Omit<District, 'id' | 'createdAt' | 'updatedAt'>>({
+    name: '',
+    isCommissionerateOrWing: false
+  });
+  const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
+  const [districtDialogOpen, setDistrictDialogOpen] = useState(false);
 
-  // Handle district form input changes
-  const handleDistrictChange = (field: keyof typeof newDistrict, value: string | boolean) => {
-    setNewDistrict(prev => ({ ...prev, [field]: value }));
-  };
+  // Users State
+  const [newUser, setNewUser] = useState<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>({
+    username: '',
+    password: '',
+    role: 'HQ_ADMIN',
+    isActive: true
+  });
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
 
-  // Handle staff form input changes
-  const handleStaffChange = (field: keyof typeof newStaff, value: string) => {
-    setNewStaff(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Handle create user
-  const handleCreateUser = () => {
+  // Staff CRUD Operations
+  const handleStaffSubmit = () => {
     try {
-      // Validation
-      if (!newUser.username || !newUser.password) {
-        toast({
-          title: "Missing Fields",
-          description: "Username and password are required.",
-          variant: "destructive"
+      if (editingStaff) {
+        updateStaff(editingStaff.id, {
+          gNo: newStaff.gNo,
+          name: newStaff.name,
+          rank: newStaff.rank,
+          placeOfPosting: newStaff.placeOfPosting,
+          mobileNumber: newStaff.mobileNumber
         });
-        return;
-      }
-
-      // Check if username already exists
-      if (users.some(u => u.username === newUser.username)) {
         toast({
-          title: "Username Exists",
-          description: "This username is already in use.",
-          variant: "destructive"
+          title: "Staff updated",
+          description: `${newStaff.name} has been updated successfully.`
         });
-        return;
+      } else {
+        addStaff(newStaff);
+        toast({
+          title: "Staff added",
+          description: `${newStaff.name} has been added successfully.`
+        });
       }
-
-      // Create user
-      const user = addUser({
-        username: newUser.username,
-        password: newUser.password,
-        role: newUser.role,
-        districtId: newUser.role === 'DISTRICT_ADMIN' ? newUser.districtId : undefined,
-        isActive: true,
-      });
-
-      toast({
-        title: "User Created",
-        description: `User ${user.username} has been created successfully.`
-      });
-
-      // Reset form
-      setNewUser({
-        username: '',
-        password: '',
-        role: 'HQ_ADMIN',
-      });
+      resetStaffForm();
+      setStaffDialogOpen(false);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create user.",
+        description: "There was an error processing your request.",
         variant: "destructive"
       });
-      console.error(error);
     }
   };
 
-  // Handle create district
-  const handleCreateDistrict = () => {
+  const resetStaffForm = () => {
+    setNewStaff({
+      gNo: '',
+      name: '',
+      rank: '',
+      placeOfPosting: '',
+      mobileNumber: ''
+    });
+    setEditingStaff(null);
+  };
+
+  const handleEditStaff = (staff: CommunicationStaff) => {
+    setEditingStaff(staff);
+    setNewStaff({
+      gNo: staff.gNo,
+      name: staff.name,
+      rank: staff.rank,
+      placeOfPosting: staff.placeOfPosting,
+      mobileNumber: staff.mobileNumber
+    });
+    setStaffDialogOpen(true);
+  };
+
+  // District CRUD Operations
+  const handleDistrictSubmit = () => {
     try {
-      // Validation
-      if (!newDistrict.name) {
-        toast({
-          title: "Missing Fields",
-          description: "District name is required.",
-          variant: "destructive"
+      if (editingDistrict) {
+        updateDistrict(editingDistrict.id, {
+          name: newDistrict.name,
+          isCommissionerateOrWing: newDistrict.isCommissionerateOrWing
         });
-        return;
-      }
-
-      // Check if district name already exists
-      if (districts.some(d => d.name === newDistrict.name)) {
         toast({
-          title: "District Exists",
-          description: "A district with this name already exists.",
-          variant: "destructive"
+          title: "District updated",
+          description: `${newDistrict.name} has been updated successfully.`
         });
-        return;
+      } else {
+        addDistrict(newDistrict);
+        toast({
+          title: "District added",
+          description: `${newDistrict.name} has been added successfully.`
+        });
       }
-
-      // Create district
-      const district = addDistrict({
-        name: newDistrict.name,
-        isCommissionerateOrWing: newDistrict.isCommissionerateOrWing,
-      });
-
-      toast({
-        title: "District Created",
-        description: `${district.name} has been created successfully.`
-      });
-
-      // Reset form
-      setNewDistrict({
-        name: '',
-        isCommissionerateOrWing: false,
-      });
+      resetDistrictForm();
+      setDistrictDialogOpen(false);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create district.",
+        description: "There was an error processing your request.",
         variant: "destructive"
       });
-      console.error(error);
     }
   };
 
-  // Handle create staff
-  const handleCreateStaff = () => {
+  const resetDistrictForm = () => {
+    setNewDistrict({
+      name: '',
+      isCommissionerateOrWing: false
+    });
+    setEditingDistrict(null);
+  };
+
+  const handleEditDistrict = (district: District) => {
+    setEditingDistrict(district);
+    setNewDistrict({
+      name: district.name,
+      isCommissionerateOrWing: district.isCommissionerateOrWing
+    });
+    setDistrictDialogOpen(true);
+  };
+
+  // User CRUD Operations
+  const handleUserSubmit = () => {
     try {
-      // Validation
-      if (!newStaff.gNo || !newStaff.name || !newStaff.rank || !newStaff.placeOfPosting) {
+      if (editingUser) {
+        // Omit password if it's empty (user didn't want to change it)
+        const userUpdate: Partial<User> = {
+          username: newUser.username,
+          role: newUser.role,
+          isActive: newUser.isActive
+        };
+        
+        // Only include password if it was provided
+        if (newUser.password) {
+          userUpdate.password = newUser.password;
+        }
+        
+        // Only include districtId for DISTRICT_ADMIN role
+        if (newUser.role === 'DISTRICT_ADMIN' && newUser.districtId) {
+          userUpdate.districtId = newUser.districtId;
+        } else {
+          // Remove districtId for HQ_ADMIN
+          userUpdate.districtId = undefined;
+        }
+        
+        updateUser(editingUser.id, userUpdate);
         toast({
-          title: "Missing Fields",
-          description: "G No., Name, Rank and Place of Posting are required.",
-          variant: "destructive"
+          title: "User updated",
+          description: `${newUser.username} has been updated successfully.`
         });
-        return;
-      }
-
-      // Check if G No. already exists
-      if (staff.some(s => s.gNo === newStaff.gNo)) {
+      } else {
+        // For new users, password is required
+        if (!newUser.password) {
+          toast({
+            title: "Error",
+            description: "Password is required for new users.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        // Only add districtId for DISTRICT_ADMIN role
+        const userData = { ...newUser };
+        if (userData.role !== 'DISTRICT_ADMIN') {
+          delete userData.districtId;
+        }
+        
+        addUser(userData);
         toast({
-          title: "Staff Exists",
-          description: "A staff member with this G No. already exists.",
-          variant: "destructive"
+          title: "User added",
+          description: `${newUser.username} has been added successfully.`
         });
-        return;
       }
-
-      // Create staff
-      const staffMember = addStaff({
-        gNo: newStaff.gNo,
-        name: newStaff.name,
-        rank: newStaff.rank,
-        placeOfPosting: newStaff.placeOfPosting,
-        mobileNumber: newStaff.mobileNumber,
-      });
-
-      toast({
-        title: "Staff Created",
-        description: `${staffMember.name} has been added successfully.`
-      });
-
-      // Reset form
-      setNewStaff({
-        gNo: '',
-        name: '',
-        rank: '',
-        placeOfPosting: '',
-        mobileNumber: '',
-      });
+      resetUserForm();
+      setUserDialogOpen(false);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create staff member.",
+        description: "There was an error processing your request.",
         variant: "destructive"
       });
-      console.error(error);
     }
   };
 
-  // Toggle user active status
-  const toggleUserActive = (userId: string, currentStatus: boolean) => {
-    try {
-      updateUser(userId, { isActive: !currentStatus });
-      toast({
-        title: "User Updated",
-        description: `User status has been updated.`
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update user.",
-        variant: "destructive"
-      });
-      console.error(error);
-    }
+  const resetUserForm = () => {
+    setNewUser({
+      username: '',
+      password: '',
+      role: 'HQ_ADMIN',
+      isActive: true
+    });
+    setEditingUser(null);
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setNewUser({
+      username: user.username,
+      password: '', // Empty password field for security
+      role: user.role,
+      districtId: user.districtId,
+      isActive: user.isActive
+    });
+    setUserDialogOpen(true);
+  };
+
+  const toggleUserStatus = (user: User) => {
+    updateUser(user.id, { isActive: !user.isActive });
+    toast({
+      title: user.isActive ? "User deactivated" : "User activated",
+      description: `${user.username} has been ${user.isActive ? "deactivated" : "activated"} successfully.`
+    });
+  };
+
+  // Format date display helper
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   return (
     <AppLayout>
       <Card className="w-full">
         <CardHeader className="bg-apBlue-50">
-          <CardTitle className="text-apBlue-700">User Management</CardTitle>
+          <CardTitle className="text-apBlue-700">User & District Management</CardTitle>
           <CardDescription>
-            Manage users, districts, and communication staff
+            Manage communication staff, districts/wings, and user accounts
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs defaultValue="staff" className="w-full">
             <TabsList className="w-full mb-6">
-              <TabsTrigger value="users" className="flex-1">Users</TabsTrigger>
-              <TabsTrigger value="districts" className="flex-1">Districts & Wings</TabsTrigger>
               <TabsTrigger value="staff" className="flex-1">Communication Staff</TabsTrigger>
+              <TabsTrigger value="districts" className="flex-1">Districts & Wings</TabsTrigger>
+              <TabsTrigger value="users" className="flex-1">User Accounts</TabsTrigger>
             </TabsList>
             
-            {/* Users Tab */}
+            {/* Communication Staff Tab */}
+            <TabsContent value="staff">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Communication Staff Database</h3>
+                <Dialog open={staffDialogOpen} onOpenChange={setStaffDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={resetStaffForm}>Add New Staff</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>{editingStaff ? "Edit Staff" : "Add New Staff"}</DialogTitle>
+                      <DialogDescription>
+                        Enter the communication staff details below.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="gNo" className="text-right">G No.</Label>
+                        <Input
+                          id="gNo"
+                          value={newStaff.gNo}
+                          onChange={(e) => setNewStaff({...newStaff, gNo: e.target.value})}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">Name</Label>
+                        <Input
+                          id="name"
+                          value={newStaff.name}
+                          onChange={(e) => setNewStaff({...newStaff, name: e.target.value})}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="rank" className="text-right">Rank</Label>
+                        <Input
+                          id="rank"
+                          value={newStaff.rank}
+                          onChange={(e) => setNewStaff({...newStaff, rank: e.target.value})}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="placeOfPosting" className="text-right">Place of Posting</Label>
+                        <Input
+                          id="placeOfPosting"
+                          value={newStaff.placeOfPosting}
+                          onChange={(e) => setNewStaff({...newStaff, placeOfPosting: e.target.value})}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="mobileNumber" className="text-right">Mobile Number</Label>
+                        <Input
+                          id="mobileNumber"
+                          value={newStaff.mobileNumber}
+                          onChange={(e) => setNewStaff({...newStaff, mobileNumber: e.target.value})}
+                          className="col-span-3"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit" onClick={handleStaffSubmit}>
+                        {editingStaff ? "Update Staff" : "Add Staff"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>G No.</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Rank</TableHead>
+                      <TableHead>Place of Posting</TableHead>
+                      <TableHead>Mobile Number</TableHead>
+                      <TableHead>Created On</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {staff.length > 0 ? (
+                      staff.map((staffMember) => (
+                        <TableRow key={staffMember.id}>
+                          <TableCell className="font-medium">{staffMember.gNo}</TableCell>
+                          <TableCell>{staffMember.name}</TableCell>
+                          <TableCell>{staffMember.rank}</TableCell>
+                          <TableCell>{staffMember.placeOfPosting}</TableCell>
+                          <TableCell>{staffMember.mobileNumber}</TableCell>
+                          <TableCell>{formatDate(staffMember.createdAt)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleEditStaff(staffMember)}
+                            >
+                              Edit
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4">
+                          No staff members found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+            
+            {/* Districts & Wings Tab */}
+            <TabsContent value="districts">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Districts & Special Wings</h3>
+                <Dialog open={districtDialogOpen} onOpenChange={setDistrictDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={resetDistrictForm}>Add New District/Wing</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>{editingDistrict ? "Edit District/Wing" : "Add New District/Wing"}</DialogTitle>
+                      <DialogDescription>
+                        Enter the district or special wing details below.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">Name</Label>
+                        <Input
+                          id="name"
+                          value={newDistrict.name}
+                          onChange={(e) => setNewDistrict({...newDistrict, name: e.target.value})}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="type" className="text-right">Type</Label>
+                        <div className="flex items-center space-x-2 col-span-3">
+                          <Switch
+                            id="type"
+                            checked={newDistrict.isCommissionerateOrWing}
+                            onCheckedChange={(checked) => 
+                              setNewDistrict({...newDistrict, isCommissionerateOrWing: checked})
+                            }
+                          />
+                          <Label htmlFor="type">
+                            {newDistrict.isCommissionerateOrWing ? "Commissionerate/Wing" : "District"}
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit" onClick={handleDistrictSubmit}>
+                        {editingDistrict ? "Update District/Wing" : "Add District/Wing"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Created On</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {districts.length > 0 ? (
+                      districts.map((district) => (
+                        <TableRow key={district.id}>
+                          <TableCell className="font-medium">{district.name}</TableCell>
+                          <TableCell>
+                            {district.isCommissionerateOrWing ? "Commissionerate/Wing" : "District"}
+                          </TableCell>
+                          <TableCell>{formatDate(district.createdAt)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleEditDistrict(district)}
+                            >
+                              Edit
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-4">
+                          No districts or wings found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+            
+            {/* User Accounts Tab */}
             <TabsContent value="users">
-              <div className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Add New User</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="username">Username</Label>
-                          <Input 
-                            id="username" 
-                            value={newUser.username}
-                            onChange={(e) => handleUserChange('username', e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="password">Password</Label>
-                          <Input 
-                            id="password" 
-                            type="password" 
-                            value={newUser.password}
-                            onChange={(e) => handleUserChange('password', e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="role">Role</Label>
-                          <Select 
-                            value={newUser.role} 
-                            onValueChange={(value) => handleUserChange('role', value as UserRole)}
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">User Accounts</h3>
+                <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={resetUserForm}>Add New User</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>{editingUser ? "Edit User" : "Add New User"}</DialogTitle>
+                      <DialogDescription>
+                        Enter the user account details below.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="username" className="text-right">Username</Label>
+                        <Input
+                          id="username"
+                          value={newUser.username}
+                          onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="password" className="text-right">
+                          {editingUser ? "New Password (leave blank to keep current)" : "Password"}
+                        </Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          value={newUser.password}
+                          onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="role" className="text-right">Role</Label>
+                        <Select
+                          value={newUser.role}
+                          onValueChange={(value: 'HQ_ADMIN' | 'DISTRICT_ADMIN') => 
+                            setNewUser({...newUser, role: value})
+                          }
+                        >
+                          <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="HQ_ADMIN">HQ Admin</SelectItem>
+                            <SelectItem value="DISTRICT_ADMIN">District Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {newUser.role === 'DISTRICT_ADMIN' && (
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="district" className="text-right">District</Label>
+                          <Select
+                            value={newUser.districtId}
+                            onValueChange={(value) => 
+                              setNewUser({...newUser, districtId: value})
+                            }
                           >
-                            <SelectTrigger id="role">
-                              <SelectValue placeholder="Select role" />
+                            <SelectTrigger className="col-span-3">
+                              <SelectValue placeholder="Select district" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="HQ_ADMIN">HQ Admin</SelectItem>
-                              <SelectItem value="DISTRICT_ADMIN">District Admin</SelectItem>
+                              {districts.map(district => (
+                                <SelectItem key={district.id} value={district.id}>
+                                  {district.name}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        
-                        {newUser.role === 'DISTRICT_ADMIN' && (
-                          <div className="space-y-2">
-                            <Label htmlFor="district">District/Wing</Label>
-                            <Select 
-                              value={newUser.districtId} 
-                              onValueChange={(value) => handleUserChange('districtId', value)}
-                            >
-                              <SelectTrigger id="district">
-                                <SelectValue placeholder="Select district" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {districts.map((district) => (
-                                  <SelectItem key={district.id} value={district.id}>
-                                    {district.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                        
-                        <Button className="w-full" onClick={handleCreateUser}>
-                          Create User
-                        </Button>
+                      )}
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="status" className="text-right">Status</Label>
+                        <div className="flex items-center space-x-2 col-span-3">
+                          <Switch
+                            id="status"
+                            checked={newUser.isActive}
+                            onCheckedChange={(checked) => 
+                              setNewUser({...newUser, isActive: checked})
+                            }
+                          />
+                          <Label htmlFor="status">
+                            {newUser.isActive ? "Active" : "Inactive"}
+                          </Label>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Existing Users</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Username</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>District</TableHead>
-                            <TableHead>Active</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {users.map((user) => {
-                            const district = districts.find(d => d.id === user.districtId);
-                            
-                            return (
-                              <TableRow key={user.id}>
-                                <TableCell>{user.username}</TableCell>
-                                <TableCell>
-                                  {user.role === 'HQ_ADMIN' ? 'HQ Admin' : 'District Admin'}
-                                </TableCell>
-                                <TableCell>
-                                  {district ? district.name : user.role === 'HQ_ADMIN' ? 'N/A' : 'Not Assigned'}
-                                </TableCell>
-                                <TableCell>
-                                  <Switch 
-                                    checked={user.isActive} 
-                                    onCheckedChange={() => toggleUserActive(user.id, user.isActive)}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit" onClick={handleUserSubmit}>
+                        {editingUser ? "Update User" : "Add User"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
-            </TabsContent>
-            
-            {/* Districts Tab */}
-            <TabsContent value="districts">
-              <div className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Add New District/Wing</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="districtName">Name</Label>
-                          <Input 
-                            id="districtName" 
-                            value={newDistrict.name}
-                            onChange={(e) => handleDistrictChange('name', e.target.value)}
-                            placeholder="e.g. Vijayawada Commissionerate"
-                          />
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Switch 
-                            id="isCommissionerateOrWing" 
-                            checked={newDistrict.isCommissionerateOrWing}
-                            onCheckedChange={(checked) => handleDistrictChange('isCommissionerateOrWing', checked)}
-                          />
-                          <Label htmlFor="isCommissionerateOrWing">Is Commissionerate or Wing</Label>
-                        </div>
-                        
-                        <Button className="w-full" onClick={handleCreateDistrict}>
-                          Create District/Wing
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Existing Districts & Wings</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Type</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {districts.map((district) => (
-                            <TableRow key={district.id}>
-                              <TableCell>{district.name}</TableCell>
-                              <TableCell>
-                                {district.isCommissionerateOrWing ? 'Commissionerate/Wing' : 'District'}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
-            
-            {/* Staff Tab */}
-            <TabsContent value="staff">
-              <div className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Add New Staff Member</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="gNo">G No.</Label>
-                          <Input 
-                            id="gNo" 
-                            value={newStaff.gNo}
-                            onChange={(e) => handleStaffChange('gNo', e.target.value)}
-                            placeholder="e.g. G12345"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="staffName">Name</Label>
-                          <Input 
-                            id="staffName" 
-                            value={newStaff.name}
-                            onChange={(e) => handleStaffChange('name', e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="rank">Rank</Label>
-                          <Input 
-                            id="rank" 
-                            value={newStaff.rank}
-                            onChange={(e) => handleStaffChange('rank', e.target.value)}
-                            placeholder="e.g. Inspector"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="placeOfPosting">Place of Posting</Label>
-                          <Input 
-                            id="placeOfPosting" 
-                            value={newStaff.placeOfPosting}
-                            onChange={(e) => handleStaffChange('placeOfPosting', e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="mobileNumber">Mobile Number</Label>
-                          <Input 
-                            id="mobileNumber" 
-                            value={newStaff.mobileNumber}
-                            onChange={(e) => handleStaffChange('mobileNumber', e.target.value)}
-                          />
-                        </div>
-                        
-                        <Button className="w-full" onClick={handleCreateStaff}>
-                          Add Staff Member
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Communication Staff</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>G No.</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Rank</TableHead>
-                            <TableHead>Place of Posting</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {staff.map((staffMember) => (
-                            <TableRow key={staffMember.id}>
-                              <TableCell>{staffMember.gNo}</TableCell>
-                              <TableCell>{staffMember.name}</TableCell>
-                              <TableCell>{staffMember.rank}</TableCell>
-                              <TableCell>{staffMember.placeOfPosting}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </div>
+              
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>District</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created On</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.length > 0 ? (
+                      users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.username}</TableCell>
+                          <TableCell>{user.role === 'HQ_ADMIN' ? 'HQ Admin' : 'District Admin'}</TableCell>
+                          <TableCell>
+                            {user.districtId ? 
+                              districts.find(d => d.id === user.districtId)?.name || 'Unknown District' : 
+                              'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </TableCell>
+                          <TableCell>{formatDate(user.createdAt)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleEditUser(user)}
+                              >
+                                Edit
+                              </Button>
+                              <Button 
+                                variant={user.isActive ? "destructive" : "default"} 
+                                size="sm" 
+                                onClick={() => toggleUserStatus(user)}
+                              >
+                                {user.isActive ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-4">
+                          No users found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </TabsContent>
           </Tabs>
