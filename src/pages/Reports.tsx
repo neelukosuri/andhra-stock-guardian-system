@@ -4,536 +4,513 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
-import { Search } from 'lucide-react';
-import { 
-  Bar, 
-  BarChart, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend,
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell
-} from 'recharts';
 
 const Reports: React.FC = () => {
   const { 
-    hqStock, 
-    items, 
-    districts, 
+    items,
     metrics,
-    districtStock, 
-    loanItems, 
-    hqIssuanceVouchers, 
+    districts,
+    hqStock,
+    districtStock,
+    hqIssuanceVouchers,
     hqItemMovements,
-    hqLarVouchers 
+    hqLarVouchers,
+    loanItems
   } = useData();
   
-  // Report filters
-  const [activeTab, setActiveTab] = useState('stock');
-  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('hq-stock');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // Filter items by search term
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Get item name by ID
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+
+  // Helper functions to get names from IDs
   const getItemName = (itemId: string) => {
     const item = items.find(i => i.id === itemId);
-    return item ? `${item.name} (${item.code})` : 'Unknown Item';
+    return item ? item.name : 'Unknown Item';
   };
-  
-  // Get metric name by ID
+
   const getMetricName = (metricId: string) => {
     const metric = metrics.find(m => m.id === metricId);
-    return metric ? metric.name : '';
+    return metric ? metric.name : 'Unit';
   };
-  
-  // Get district name by ID
+
   const getDistrictName = (districtId: string) => {
     const district = districts.find(d => d.id === districtId);
     return district ? district.name : 'Unknown District';
   };
-  
-  // Filter HQ stock data for chart
-  const stockChartData = filteredItems.map(item => {
+
+  // Generate HQ Stock Report
+  const hqStockReport = hqStock.map(stock => {
+    const item = items.find(i => i.id === stock.itemId);
+    const metric = metrics.find(m => m.id === stock.metricId);
+    
+    return {
+      itemCode: item?.code || 'Unknown',
+      itemName: item?.name || 'Unknown',
+      quantity: stock.quantity,
+      metricName: metric?.name || 'Unit',
+      lowStockThreshold: stock.lowStockThreshold || 'Not Set',
+      status: stock.lowStockThreshold && stock.quantity <= stock.lowStockThreshold ? 'Low Stock' : 'Normal'
+    };
+  });
+
+  // Generate District Stock Report
+  const filteredDistrictStock = selectedDistrict ? 
+    districtStock.filter(stock => stock.districtId === selectedDistrict) :
+    districtStock;
+
+  const districtStockReport = filteredDistrictStock.map(stock => {
+    const item = items.find(i => i.id === stock.itemId);
+    const metric = metrics.find(m => m.id === stock.metricId);
+    const district = districts.find(d => d.id === stock.districtId);
+    
+    return {
+      districtName: district?.name || 'Unknown',
+      itemCode: item?.code || 'Unknown',
+      itemName: item?.name || 'Unknown',
+      quantity: stock.quantity,
+      metricName: metric?.name || 'Unit',
+      isReturnable: stock.isReturnable ? 'Yes (Ledger-I)' : 'No (Ledger-II)'
+    };
+  });
+
+  // Generate Loan Items Report
+  const loanItemsReport = loanItems.map(loan => {
+    const item = items.find(i => i.id === loan.itemId);
+    const metric = metrics.find(m => m.id === loan.metricId);
+    
+    return {
+      itemName: item?.name || 'Unknown',
+      sourceWing: loan.sourceWing,
+      eventName: loan.eventName,
+      quantity: loan.quantity,
+      metricName: metric?.name || 'Unit',
+      expectedReturnDate: new Date(loan.expectedReturnDate).toLocaleDateString(),
+      actualReturnDate: loan.actualReturnDate ? new Date(loan.actualReturnDate).toLocaleDateString() : 'Not Returned',
+      status: loan.status,
+      overdueStatus: loan.status === 'Loaned' && new Date(loan.expectedReturnDate) < new Date() ? 'Overdue' : 'On Schedule'
+    };
+  });
+
+  // Generate Issuance History Report
+  const issuanceHistoryReport = hqIssuanceVouchers.map(voucher => {
+    const district = districts.find(d => d.id === voucher.receivingDistrictId);
+    
+    // Get items issued with this voucher
+    const movements = hqItemMovements.filter(m => m.ivId === voucher.id);
+    
+    // Count items and total quantity
+    const itemCount = movements.length;
+    const totalQuantity = movements.reduce((sum, m) => sum + m.quantity, 0);
+    
+    // Count returnable vs non-returnable
+    const returnableCount = movements.filter(m => m.isReturnable).length;
+    const nonReturnableCount = itemCount - returnableCount;
+    
+    return {
+      ivNumber: voucher.ivNumber,
+      issueDate: new Date(voucher.issueDate).toLocaleDateString(),
+      district: district?.name || 'Unknown',
+      itemCount,
+      totalQuantity,
+      returnableCount,
+      nonReturnableCount
+    };
+  });
+
+  // Filter by date range if set
+  const filteredIssuanceHistory = dateRange?.from ? 
+    issuanceHistoryReport.filter(iv => {
+      const ivDate = new Date(iv.issueDate);
+      if (dateRange.from && dateRange.to) {
+        return ivDate >= dateRange.from && ivDate <= dateRange.to;
+      } else if (dateRange.from) {
+        return ivDate >= dateRange.from;
+      }
+      return true;
+    }) : 
+    issuanceHistoryReport;
+
+  // Generate Return History Report
+  const returnHistoryReport = hqLarVouchers.map(voucher => {
+    // Get the original IV
+    const originalIv = hqIssuanceVouchers.find(iv => iv.id === voucher.ivIdRef);
+    const district = originalIv ? districts.find(d => d.id === originalIv.receivingDistrictId) : null;
+    
+    // Get items returned with this voucher
+    const movements = hqItemMovements.filter(m => m.larId === voucher.id);
+    
+    // Count items and total quantity
+    const itemCount = movements.length;
+    const totalQuantity = movements.reduce((sum, m) => sum + m.quantity, 0);
+    
+    return {
+      larNumber: voucher.larNumber,
+      returnDate: new Date(voucher.returnDate).toLocaleDateString(),
+      originalIvNumber: originalIv?.ivNumber || 'Unknown',
+      district: district?.name || 'Unknown',
+      itemCount,
+      totalQuantity
+    };
+  });
+
+  // Filter by date range if set
+  const filteredReturnHistory = dateRange?.from ? 
+    returnHistoryReport.filter(lar => {
+      const larDate = new Date(lar.returnDate);
+      if (dateRange.from && dateRange.to) {
+        return larDate >= dateRange.from && larDate <= dateRange.to;
+      } else if (dateRange.from) {
+        return larDate >= dateRange.from;
+      }
+      return true;
+    }) : 
+    returnHistoryReport;
+
+  // Prepare data for charts
+  const hqStockChartData = items.slice(0, 10).map(item => {
     const stock = hqStock.find(s => s.itemId === item.id);
     return {
       name: item.name,
-      quantity: stock ? stock.quantity : 0,
-      metric: stock ? getMetricName(stock.metricId) : '',
+      quantity: stock?.quantity || 0
     };
-  }).filter(item => item.quantity > 0).slice(0, 10); // Top 10 items
-  
-  // District distribution data for pie chart
-  const districtDistributionData = districts.map(district => {
-    // Calculate total items distributed to this district
-    const districtItems = districtStock.filter(ds => ds.districtId === district.id);
-    const totalQuantity = districtItems.reduce((sum, item) => sum + item.quantity, 0);
+  });
+
+  const districtStockDistributionData = districts.map(district => {
+    const distItems = districtStock.filter(s => s.districtId === district.id);
+    const totalItems = distItems.length;
+    const totalQuantity = distItems.reduce((sum, item) => sum + item.quantity, 0);
     
     return {
       name: district.name,
-      value: totalQuantity
+      items: totalItems,
+      quantity: totalQuantity
     };
-  }).filter(item => item.value > 0);
-  
-  // Pie chart colors
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-  
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'PPP');
-    } catch (e) {
-      return 'Invalid Date';
-    }
-  };
-  
+  });
+
   return (
     <AppLayout>
-      <Card className="w-full">
-        <CardHeader className="bg-apBlue-50">
-          <CardTitle className="text-apBlue-700">Reports</CardTitle>
-          <CardDescription>
-            View and generate reports for inventory, issuances, and returns
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="w-full">
-              <TabsTrigger value="stock" className="flex-1">HQ Stock</TabsTrigger>
-              <TabsTrigger value="district" className="flex-1">District Stock</TabsTrigger>
-              <TabsTrigger value="loan" className="flex-1">Loan Items</TabsTrigger>
-              <TabsTrigger value="issuance" className="flex-1">Issuance History</TabsTrigger>
-              <TabsTrigger value="returns" className="flex-1">Return History</TabsTrigger>
-            </TabsList>
-            
-            {/* Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="search">Search Item</Label>
-                <div className="relative">
-                  <Search className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="search"
-                    placeholder="Item name or code"
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
+      <div className="flex flex-col gap-6">
+        <Card>
+          <CardHeader className="bg-apBlue-50">
+            <CardTitle className="text-apBlue-700">Reports</CardTitle>
+            <CardDescription>
+              View comprehensive reports and analytics
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-6">
+                <TabsTrigger value="hq-stock">HQ Stock</TabsTrigger>
+                <TabsTrigger value="district-stock">District Stock</TabsTrigger>
+                <TabsTrigger value="loan-items">Loan Items</TabsTrigger>
+                <TabsTrigger value="issuance-history">Issuance History</TabsTrigger>
+                <TabsTrigger value="return-history">Return History</TabsTrigger>
+              </TabsList>
               
-              {(activeTab === 'district' || activeTab === 'issuance' || activeTab === 'returns') && (
-                <div>
-                  <Label htmlFor="district">District/Wing</Label>
-                  <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
-                    <SelectTrigger id="district">
-                      <SelectValue placeholder="All Districts" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All Districts</SelectItem>
-                      {districts.map((district) => (
-                        <SelectItem key={district.id} value={district.id}>
-                          {district.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              {(activeTab === 'issuance' || activeTab === 'returns' || activeTab === 'loan') && (
-                <div>
-                  <Label>Date Range</Label>
-                  <DatePickerWithRange 
-                    value={dateRange}
-                    onChange={setDateRange} 
-                  />
-                </div>
-              )}
-            </div>
-            
-            {/* HQ Stock Tab */}
-            <TabsContent value="stock" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">HQ Stock Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[400px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={stockChartData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="name" 
-                          angle={-45} 
-                          textAnchor="end" 
-                          height={80} 
-                        />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value, name, props) => [`${value} ${props.payload.metric}`, 'Quantity']} 
-                        />
-                        <Legend />
-                        <Bar dataKey="quantity" name="Quantity" fill="#8884d8" />
-                      </BarChart>
-                    </ResponsiveContainer>
+              {/* HQ Stock Report */}
+              <TabsContent value="hq-stock">
+                <div className="space-y-6">
+                  <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="lg:w-1/2">
+                      <h3 className="text-lg font-medium mb-4">Current HQ Inventory</h3>
+                      <div className="border rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Item Code</TableHead>
+                              <TableHead>Item Name</TableHead>
+                              <TableHead>Quantity</TableHead>
+                              <TableHead>Low Stock Threshold</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {hqStockReport.length > 0 ? (
+                              hqStockReport.map((item, i) => (
+                                <TableRow key={i}>
+                                  <TableCell>{item.itemCode}</TableCell>
+                                  <TableCell>{item.itemName}</TableCell>
+                                  <TableCell>{item.quantity} {item.metricName}</TableCell>
+                                  <TableCell>{item.lowStockThreshold}</TableCell>
+                                  <TableCell>
+                                    <span className={item.status === 'Low Stock' ? 'text-red-500 font-medium' : 'text-green-500'}>
+                                      {item.status}
+                                    </span>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center py-4">No stock data available</TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                    
+                    <div className="lg:w-1/2">
+                      <h3 className="text-lg font-medium mb-4">Stock Distribution</h3>
+                      <div className="h-[400px] bg-slate-50 p-4 rounded-lg">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={hqStockChartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="quantity" fill="#0284c7" name="Quantity" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </TabsContent>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Detailed Stock List</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item Name</TableHead>
-                        <TableHead>Item Code</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Low Stock Threshold</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredItems.map(item => {
-                        const stock = hqStock.find(s => s.itemId === item.id);
-                        const isLowStock = stock?.lowStockThreshold && stock.quantity <= stock.lowStockThreshold;
-                        
-                        return stock ? (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.name}</TableCell>
-                            <TableCell>{item.code}</TableCell>
-                            <TableCell>
-                              {stock.quantity} {getMetricName(stock.metricId)}
-                            </TableCell>
-                            <TableCell>
-                              {stock.lowStockThreshold ? `${stock.lowStockThreshold} ${getMetricName(stock.metricId)}` : 'Not Set'}
-                            </TableCell>
-                            <TableCell>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${isLowStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                {isLowStock ? 'Low Stock' : 'Normal'}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        ) : null;
-                      })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            {/* District Stock Tab */}
-            <TabsContent value="district" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">District Distribution</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[400px] flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={districtDistributionData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={150}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {districtDistributionData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              {/* District Stock Report */}
+              <TabsContent value="district-stock">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-medium">District Inventory</h3>
+                    <div className="w-[250px]">
+                      <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="All Districts" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All Districts</SelectItem>
+                          {districts.map((district) => (
+                            <SelectItem key={district.id} value={district.id}>
+                              {district.name}
+                            </SelectItem>
                           ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`${value} items`, 'Quantity']} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">District Stock Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>District/Wing</TableHead>
-                        <TableHead>Item Name</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Returnable</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {districtStock
-                        .filter(ds => !selectedDistrict || ds.districtId === selectedDistrict)
-                        .filter(ds => {
-                          const item = items.find(i => i.id === ds.itemId);
-                          return item && (
-                            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            item.code.toLowerCase().includes(searchTerm.toLowerCase())
-                          );
-                        })
-                        .map(stock => (
-                          <TableRow key={stock.id}>
-                            <TableCell>{getDistrictName(stock.districtId)}</TableCell>
-                            <TableCell>{getItemName(stock.itemId)}</TableCell>
-                            <TableCell>
-                              {stock.quantity} {getMetricName(stock.metricId)}
-                            </TableCell>
-                            <TableCell>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${stock.isReturnable ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                                {stock.isReturnable ? 'Returnable' : 'Consumable'}
-                              </span>
-                            </TableCell>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>District</TableHead>
+                            <TableHead>Item Code</TableHead>
+                            <TableHead>Item Name</TableHead>
+                            <TableHead>Quantity</TableHead>
+                            <TableHead>Returnable</TableHead>
                           </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            {/* Loan Items Tab */}
-            <TabsContent value="loan" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Loan Items Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item Name</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead>Event</TableHead>
-                        <TableHead>Expected Return Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loanItems
-                        .filter(loan => {
-                          // Filter by search term
-                          const item = items.find(i => i.id === loan.itemId);
-                          const matchesSearch = item && (
-                            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            item.code.toLowerCase().includes(searchTerm.toLowerCase())
-                          );
-                          
-                          // Filter by date range
-                          let matchesDateRange = true;
-                          if (dateRange?.from && dateRange?.to) {
-                            const expectedReturnDate = new Date(loan.expectedReturnDate);
-                            matchesDateRange = expectedReturnDate >= dateRange.from &&
-                              expectedReturnDate <= dateRange.to;
-                          }
-                          
-                          return matchesSearch && matchesDateRange;
-                        })
-                        .map(loan => {
-                          const isOverdue = new Date(loan.expectedReturnDate) < new Date() && 
-                                          loan.status === 'Loaned';
-                          
-                          return (
-                            <TableRow key={loan.id}>
-                              <TableCell>{getItemName(loan.itemId)}</TableCell>
+                        </TableHeader>
+                        <TableBody>
+                          {districtStockReport.length > 0 ? (
+                            districtStockReport.map((item, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{item.districtName}</TableCell>
+                                <TableCell>{item.itemCode}</TableCell>
+                                <TableCell>{item.itemName}</TableCell>
+                                <TableCell>{item.quantity} {item.metricName}</TableCell>
+                                <TableCell>{item.isReturnable}</TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-4">No district stock data available</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    
+                    <div className="h-[400px] bg-slate-50 p-4 rounded-lg">
+                      <h3 className="text-base font-medium mb-4">District Stock Distribution</h3>
+                      <ResponsiveContainer width="100%" height="90%">
+                        <BarChart data={districtStockDistributionData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="items" fill="#0369a1" name="Unique Items" />
+                          <Bar dataKey="quantity" fill="#06b6d4" name="Total Quantity" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              {/* Loan Items Report */}
+              <TabsContent value="loan-items">
+                <div className="space-y-6">
+                  <h3 className="text-lg font-medium mb-4">Loan Items Status</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item Name</TableHead>
+                          <TableHead>Source Wing</TableHead>
+                          <TableHead>Event</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead>Expected Return</TableHead>
+                          <TableHead>Actual Return</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loanItemsReport.length > 0 ? (
+                          loanItemsReport.map((item, i) => (
+                            <TableRow key={i}>
+                              <TableCell>{item.itemName}</TableCell>
+                              <TableCell>{item.sourceWing}</TableCell>
+                              <TableCell>{item.eventName}</TableCell>
+                              <TableCell>{item.quantity} {item.metricName}</TableCell>
+                              <TableCell>{item.expectedReturnDate}</TableCell>
+                              <TableCell>{item.actualReturnDate}</TableCell>
                               <TableCell>
-                                {loan.quantity} {getMetricName(loan.metricId)}
-                              </TableCell>
-                              <TableCell>{loan.sourceWing}</TableCell>
-                              <TableCell>{loan.eventName}</TableCell>
-                              <TableCell>{formatDate(loan.expectedReturnDate)}</TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  loan.status === 'Returned' 
-                                    ? 'bg-green-100 text-green-700' 
-                                    : isOverdue 
-                                      ? 'bg-red-100 text-red-700' 
-                                      : 'bg-yellow-100 text-yellow-700'
-                                }`}>
-                                  {loan.status === 'Returned' 
-                                    ? 'Returned' 
-                                    : isOverdue 
-                                      ? 'Overdue' 
-                                      : 'On Loan'}
+                                <span className={
+                                  item.status === 'Returned' ? 'text-green-500 font-medium' : 
+                                  item.overdueStatus === 'Overdue' ? 'text-red-500 font-medium' : 
+                                  'text-amber-500 font-medium'
+                                }>
+                                  {item.status} {item.status === 'Loaned' && item.overdueStatus === 'Overdue' && '(Overdue)'}
                                 </span>
                               </TableCell>
                             </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            {/* Issuance History Tab */}
-            <TabsContent value="issuance" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">HQ to District Issuance History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>IV Number</TableHead>
-                        <TableHead>Issue Date</TableHead>
-                        <TableHead>District</TableHead>
-                        <TableHead>Items</TableHead>
-                        <TableHead>Returns</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {hqIssuanceVouchers
-                        .filter(iv => !selectedDistrict || iv.receivingDistrictId === selectedDistrict)
-                        .filter(iv => {
-                          if (!dateRange?.from || !dateRange?.to) return true;
-                          const issueDate = new Date(iv.issueDate);
-                          return issueDate >= dateRange.from && issueDate <= dateRange.to;
-                        })
-                        .map(iv => {
-                          // Get all movements for this IV
-                          const movements = hqItemMovements.filter(m => m.ivId === iv.id);
-                          
-                          // Check if any of the items match the search term
-                          const matchesSearch = searchTerm
-                            ? movements.some(m => {
-                                const item = items.find(i => i.id === m.itemId);
-                                return item && (
-                                  item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                  item.code.toLowerCase().includes(searchTerm.toLowerCase())
-                                );
-                              })
-                            : true;
-                          
-                          if (!matchesSearch) return null;
-                          
-                          // Calculate total items and returns
-                          const totalItems = movements.length;
-                          const totalReturned = movements.filter(m => m.returnedQuantity > 0).length;
-                          
-                          return (
-                            <TableRow key={iv.id}>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-4">No loan items data available</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <div className="flex justify-between items-center mt-4">
+                    <div>
+                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs mr-2">Returned</span>
+                      <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs mr-2">On Loan (On Schedule)</span>
+                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">On Loan (Overdue)</span>
+                    </div>
+                    <Button variant="outline">Export Report</Button>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              {/* Issuance History Report */}
+              <TabsContent value="issuance-history">
+                <div className="space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <h3 className="text-lg font-medium">Issuance History</h3>
+                    <div className="w-full md:w-auto">
+                      <Label className="mb-2 block">Filter by date range</Label>
+                      <DatePickerWithRange value={dateRange} onChange={setDateRange} className="w-[300px]" />
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>IV Number</TableHead>
+                          <TableHead>Issue Date</TableHead>
+                          <TableHead>District/Wing</TableHead>
+                          <TableHead>Items Count</TableHead>
+                          <TableHead>Total Quantity</TableHead>
+                          <TableHead>Returnable</TableHead>
+                          <TableHead>Non-Returnable</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredIssuanceHistory.length > 0 ? (
+                          filteredIssuanceHistory.map((iv, i) => (
+                            <TableRow key={i}>
                               <TableCell>{iv.ivNumber}</TableCell>
-                              <TableCell>{formatDate(iv.issueDate)}</TableCell>
-                              <TableCell>{getDistrictName(iv.receivingDistrictId)}</TableCell>
-                              <TableCell>{totalItems} {totalItems === 1 ? 'item' : 'items'}</TableCell>
-                              <TableCell>
-                                {totalReturned > 0 ? (
-                                  <span className="text-green-600">{totalReturned} returned</span>
-                                ) : (
-                                  <span className="text-gray-500">No returns</span>
-                                )}
-                              </TableCell>
+                              <TableCell>{iv.issueDate}</TableCell>
+                              <TableCell>{iv.district}</TableCell>
+                              <TableCell>{iv.itemCount}</TableCell>
+                              <TableCell>{iv.totalQuantity}</TableCell>
+                              <TableCell>{iv.returnableCount}</TableCell>
+                              <TableCell>{iv.nonReturnableCount}</TableCell>
                             </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            {/* Return History Tab */}
-            <TabsContent value="returns" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">LAR History (District to HQ)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>LAR Number</TableHead>
-                        <TableHead>Return Date</TableHead>
-                        <TableHead>Original IV</TableHead>
-                        <TableHead>District</TableHead>
-                        <TableHead>Items Returned</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {hqLarVouchers
-                        .filter(lar => {
-                          // Get the original IV
-                          const originalIV = hqIssuanceVouchers.find(iv => iv.id === lar.ivIdRef);
-                          // Filter by district if selected
-                          return !selectedDistrict || (originalIV && originalIV.receivingDistrictId === selectedDistrict);
-                        })
-                        .filter(lar => {
-                          // Filter by date range
-                          if (!dateRange?.from || !dateRange?.to) return true;
-                          const returnDate = new Date(lar.returnDate);
-                          return returnDate >= dateRange.from && returnDate <= dateRange.to;
-                        })
-                        .map(lar => {
-                          // Get the original IV
-                          const originalIV = hqIssuanceVouchers.find(iv => iv.id === lar.ivIdRef);
-                          if (!originalIV) return null;
-                          
-                          // Get all movements for this LAR
-                          const movements = hqItemMovements.filter(m => m.larId === lar.id);
-                          
-                          // Check if any of the items match the search term
-                          const matchesSearch = searchTerm
-                            ? movements.some(m => {
-                                const item = items.find(i => i.id === m.itemId);
-                                return item && (
-                                  item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                  item.code.toLowerCase().includes(searchTerm.toLowerCase())
-                                );
-                              })
-                            : true;
-                          
-                          if (!matchesSearch) return null;
-                          
-                          return (
-                            <TableRow key={lar.id}>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-4">No issuance history available</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <Button variant="outline">Export Report</Button>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              {/* Return History Report */}
+              <TabsContent value="return-history">
+                <div className="space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <h3 className="text-lg font-medium">Return History</h3>
+                    <div className="w-full md:w-auto">
+                      <Label className="mb-2 block">Filter by date range</Label>
+                      <DatePickerWithRange value={dateRange} onChange={setDateRange} className="w-[300px]" />
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>LAR Number</TableHead>
+                          <TableHead>Return Date</TableHead>
+                          <TableHead>Original IV</TableHead>
+                          <TableHead>District/Wing</TableHead>
+                          <TableHead>Items Count</TableHead>
+                          <TableHead>Total Quantity</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredReturnHistory.length > 0 ? (
+                          filteredReturnHistory.map((lar, i) => (
+                            <TableRow key={i}>
                               <TableCell>{lar.larNumber}</TableCell>
-                              <TableCell>{formatDate(lar.returnDate)}</TableCell>
-                              <TableCell>{originalIV.ivNumber}</TableCell>
-                              <TableCell>{getDistrictName(originalIV.receivingDistrictId)}</TableCell>
-                              <TableCell>{movements.length} {movements.length === 1 ? 'item' : 'items'}</TableCell>
+                              <TableCell>{lar.returnDate}</TableCell>
+                              <TableCell>{lar.originalIvNumber}</TableCell>
+                              <TableCell>{lar.district}</TableCell>
+                              <TableCell>{lar.itemCount}</TableCell>
+                              <TableCell>{lar.totalQuantity}</TableCell>
                             </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-4">No return history available</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <Button variant="outline">Export Report</Button>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
     </AppLayout>
   );
 };

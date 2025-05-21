@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,11 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
 const LarFromDistricts: React.FC = () => {
   const { 
     hqIssuanceVouchers, 
     hqItemMovements, 
+    hqLarVouchers,
     items,
     metrics,
     districts, 
@@ -31,6 +34,47 @@ const LarFromDistricts: React.FC = () => {
     quantity: number;
     maxQuantity: number;
   }[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(); 
+  const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
+
+  // Populate the LAR history with combined data
+  useEffect(() => {
+    const history = hqLarVouchers.map(larVoucher => {
+      const originalIv = hqIssuanceVouchers.find(iv => iv.id === larVoucher.ivIdRef);
+      const district = originalIv ? districts.find(d => d.id === originalIv.receivingDistrictId) : null;
+      
+      // Get movements associated with this LAR
+      const movements = hqItemMovements.filter(m => m.larId === larVoucher.id);
+      
+      // Count items and calculate total quantity
+      const itemCount = movements.length;
+      const totalQuantity = movements.reduce((sum, m) => sum + m.quantity, 0);
+      
+      return {
+        ...larVoucher,
+        originalIvNumber: originalIv?.ivNumber || 'Unknown',
+        districtName: district?.name || 'Unknown',
+        itemCount,
+        totalQuantity
+      };
+    });
+
+    // Apply date filter if set
+    let filtered = history;
+    if (dateRange?.from) {
+      filtered = filtered.filter(lar => {
+        const larDate = new Date(lar.returnDate);
+        if (dateRange.from && dateRange.to) {
+          return larDate >= dateRange.from && larDate <= dateRange.to;
+        } else if (dateRange.from) {
+          return larDate >= dateRange.from;
+        }
+        return true;
+      });
+    }
+
+    setFilteredHistory(filtered);
+  }, [hqLarVouchers, hqIssuanceVouchers, districts, hqItemMovements, dateRange]);
 
   // Fetch issuable items when IV is selected
   const handleIVSelect = (ivNumber: string) => {
@@ -130,15 +174,12 @@ const LarFromDistricts: React.FC = () => {
 
   // Get metric name by ID
   const getMetricName = (itemId: string) => {
-    // Find the item first to get its metric ID from stock
-    const item = items.find(i => i.id === itemId);
-    if (!item) return '';
+    // First find the HQ stock entry for this item to get the metric
+    const stockItem = hqItemMovements.find(m => m.itemId === itemId);
+    if (!stockItem) return '';
     
-    // Find this item in HQ stock to get the metric
-    const movement = hqItemMovements.find(m => m.itemId === itemId);
-    if (!movement) return '';
-    
-    const metric = metrics.find(m => m.id === movement.metricId);
+    // Find the corresponding metric
+    const metric = metrics.find(m => m.id === stockItem.metricId);
     return metric ? metric.name : '';
   };
 
@@ -245,6 +286,10 @@ const LarFromDistricts: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
+            <div className="mb-6">
+              <Label className="mb-2 block">Filter by date range</Label>
+              <DatePickerWithRange value={dateRange} onChange={setDateRange} className="w-[300px]" />
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -256,14 +301,23 @@ const LarFromDistricts: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {/* We'll need to join LAR vouchers with movements */}
-                {hqIssuanceVouchers.length === 0 ? (
+                {filteredHistory.length > 0 ? (
+                  filteredHistory.map((lar) => (
+                    <TableRow key={lar.id}>
+                      <TableCell className="font-medium">{lar.larNumber}</TableCell>
+                      <TableCell>{new Date(lar.returnDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{lar.originalIvNumber}</TableCell>
+                      <TableCell>{lar.districtName}</TableCell>
+                      <TableCell>{lar.itemCount} items, {lar.totalQuantity} units</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-4">
                       No LAR history found
                     </TableCell>
                   </TableRow>
-                ) : null}
+                )}
               </TableBody>
             </Table>
           </CardContent>

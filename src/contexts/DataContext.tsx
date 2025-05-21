@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -617,6 +616,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setHQItemMovements(prev => [...prev, newMovement]);
     
+    // Find the HQ stock item to get the metricId if not provided
+    if (!newMovement.metricId) {
+      const stockItem = hqStock.find(s => s.itemId === movementData.itemId);
+      if (stockItem) {
+        newMovement.metricId = stockItem.metricId;
+      }
+    }
+    
     // Update HQ stock - deduct quantity for issues
     if (movementData.movementType === 'Issue_To_District') {
       const stockItem = hqStock.find(s => s.itemId === movementData.itemId);
@@ -737,6 +744,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     setDistrictItemMovements(prev => [...prev, newMovement]);
+    
+    // Find the district stock item to get the metricId if not provided
+    if (!newMovement.metricId) {
+      const stockItem = districtStock.find(s => 
+        s.itemId === movementData.itemId && 
+        s.districtId === movementData.districtId
+      );
+      if (stockItem) {
+        newMovement.metricId = stockItem.metricId;
+      }
+    }
     
     // Update district stock - deduct quantity for issues
     if (movementData.movementType === 'Issue_To_Internal') {

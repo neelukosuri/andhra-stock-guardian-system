@@ -132,6 +132,7 @@ export interface HQItemMovement {
   larId?: string;
   itemId: string;
   quantity: number;
+  metricId?: string; // Added to fix build error
   movementType: 'Issue_To_District' | 'Return_From_District';
   isReturnable: boolean;
   returnedQuantity: number;
@@ -175,6 +176,7 @@ export interface DistrictItemMovement {
   districtLarId?: string;
   itemId: string;
   quantity: number;
+  metricId?: string; // Added to fix build error
   movementType: 'Issue_To_Internal' | 'Return_From_Internal';
   isReturnable: boolean;
   returnedQuantity: number;

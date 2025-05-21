@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,216 +8,208 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { X, Plus } from 'lucide-react';
-import { CommunicationStaff } from '@/types';
+import { Checkbox } from '@/components/ui/checkbox';
 
+// Issue Items to Internal Offices component
 const IssueToOffices: React.FC = () => {
-  const { 
-    districtStock, 
-    items, 
-    metrics, 
-    staff, 
-    createDistrictIssuanceVoucher, 
-    addDistrictItemMovement, 
+  const {
+    items,
+    districtStock,
+    staff,
+    users,
+    metrics,
+    createDistrictIssuanceVoucher,
+    addDistrictItemMovement,
     getStaffByGNo,
-    users
+    getItemById,
+    getMetricById,
   } = useData();
   const { toast } = useToast();
-  
-  // For demo purposes, we'll use the first district
+
+  // For demo purposes, we'll use district-1
   const districtId = 'district-1';
 
-  // Form state
-  const [gNo, setGNo] = useState('');
+  // State
+  const [staffGNo, setStaffGNo] = useState('');
+  const [staffDetails, setStaffDetails] = useState<any>(null);
   const [officeName, setOfficeName] = useState('');
-  const [receivingStaff, setReceivingStaff] = useState<CommunicationStaff | null>(null);
-  const [selectedItems, setSelectedItems] = useState<{
-    itemId: string;
-    quantity: number;
-  }[]>([]);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [availableStock, setAvailableStock] = useState<any[]>([]);
+  const [issuedVouchers, setIssuedVouchers] = useState<any[]>([]);
 
-  // Handle G No. lookup
-  const handleGNoLookup = () => {
-    if (!gNo) {
-      toast({
-        title: "Required Field",
-        description: "Please enter a G No.",
-        variant: "destructive"
+  // Office options
+  const officeOptions = [
+    'Commissioner Office', 
+    'DCP Office', 
+    'ACP Office', 
+    'Police Station', 
+    'Traffic Police Station',
+    'Law & Order Wing',
+    'Crime Wing',
+    'Special Branch',
+    'Admin Office'
+  ];
+
+  // Load district stock on component mount
+  useEffect(() => {
+    // Filter stock for the current district and transform for display
+    const stockItems = districtStock
+      .filter(stock => stock.districtId === districtId && stock.quantity > 0)
+      .map(stock => {
+        const item = getItemById(stock.itemId);
+        const metric = getMetricById(stock.metricId);
+        
+        return {
+          id: stock.id,
+          itemId: stock.itemId,
+          itemName: item?.name || 'Unknown Item',
+          itemCode: item?.code || 'Unknown Code',
+          quantity: stock.quantity,
+          metricName: metric?.name || 'Unit',
+          isReturnable: stock.isReturnable,
+          selected: false,
+          issueQuantity: 0
+        };
       });
-      return;
-    }
     
-    const foundStaff = getStaffByGNo(gNo);
-    if (foundStaff) {
-      setReceivingStaff(foundStaff);
+    setAvailableStock(stockItems);
+  }, [districtStock, districtId, getItemById, getMetricById]);
+
+  // Handle staff G No. lookup
+  const handleStaffLookup = () => {
+    const staffMember = getStaffByGNo(staffGNo);
+    if (staffMember) {
+      setStaffDetails(staffMember);
       toast({
         title: "Staff Found",
-        description: `${foundStaff.name}, ${foundStaff.rank}`
+        description: `${staffMember.name}, ${staffMember.rank}`,
       });
     } else {
-      setReceivingStaff(null);
+      setStaffDetails(null);
       toast({
         title: "Staff Not Found",
-        description: "No staff member found with that G No.",
-        variant: "destructive"
+        description: "No staff member found with this G No.",
+        variant: "destructive",
       });
     }
   };
 
-  // Add item to selection
-  const handleAddItem = () => {
-    setSelectedItems([...selectedItems, { itemId: '', quantity: 1 }]);
+  // Toggle item selection
+  const handleItemToggle = (stockId: string) => {
+    setAvailableStock(prev => prev.map(item => 
+      item.id === stockId ? { ...item, selected: !item.selected, issueQuantity: !item.selected ? 1 : 0 } : item
+    ));
+    
+    updateSelectedItems();
   };
 
-  // Remove item from selection
-  const handleRemoveItem = (index: number) => {
-    const newItems = [...selectedItems];
-    newItems.splice(index, 1);
-    setSelectedItems(newItems);
+  // Update quantity to issue
+  const handleQuantityChange = (stockId: string, value: number) => {
+    setAvailableStock(prev => prev.map(item => {
+      if (item.id === stockId) {
+        // Ensure quantity doesn't exceed available stock
+        const newQuantity = Math.min(Math.max(0, value), item.quantity);
+        return { ...item, issueQuantity: newQuantity };
+      }
+      return item;
+    }));
+    
+    updateSelectedItems();
   };
 
-  // Update selected item
-  const handleItemChange = (index: number, itemId: string) => {
-    const newItems = [...selectedItems];
-    newItems[index].itemId = itemId;
-    setSelectedItems(newItems);
+  // Update selected items list based on available stock selections
+  const updateSelectedItems = () => {
+    const items = availableStock
+      .filter(item => item.selected && item.issueQuantity > 0)
+      .map(item => ({
+        stockId: item.id,
+        itemId: item.itemId,
+        itemName: item.itemName,
+        quantity: item.issueQuantity,
+        metricName: item.metricName,
+        isReturnable: item.isReturnable
+      }));
+    
+    setSelectedItems(items);
   };
 
-  // Update item quantity
-  const handleQuantityChange = (index: number, quantity: number) => {
-    const newItems = [...selectedItems];
-    newItems[index].quantity = quantity;
-    setSelectedItems(newItems);
-  };
-
-  // Get available quantity for an item
-  const getAvailableQuantity = (itemId: string) => {
-    const stock = districtStock.find(s => 
-      s.districtId === districtId && s.itemId === itemId
-    );
-    return stock ? stock.quantity : 0;
-  };
-
-  // Get metric for an item
-  const getMetricForItem = (itemId: string) => {
-    const stock = districtStock.find(s => 
-      s.districtId === districtId && s.itemId === itemId
-    );
-    return stock ? getMetricName(stock.metricId) : '';
-  };
-
-  // Get item name by ID
-  const getItemName = (itemId: string) => {
-    const item = items.find(i => i.id === itemId);
-    return item ? item.name : 'Unknown Item';
-  };
-
-  // Get metric name by ID
-  const getMetricName = (metricId: string) => {
-    const metric = metrics.find(m => m.id === metricId);
-    return metric ? metric.name : '';
-  };
-
-  // Check if item is returnable
-  const isItemReturnable = (itemId: string) => {
-    const stock = districtStock.find(s => 
-      s.districtId === districtId && s.itemId === itemId
-    );
-    return stock ? stock.isReturnable : false;
-  };
-
-  // Filter items by those available in the district stock
-  const availableItems = items.filter(item => 
-    districtStock.some(s => s.districtId === districtId && s.itemId === item.id && s.quantity > 0)
-  );
-
-  // Submit the issuance
-  const handleSubmitIssuance = () => {
+  // Handle form submission to create IV
+  const handleCreateIV = () => {
     try {
-      // Validate form
-      if (!receivingStaff) {
+      // Validate inputs
+      if (!staffDetails) {
         toast({
-          title: "Missing Staff",
-          description: "Please enter a valid G No. and verify staff details.",
-          variant: "destructive"
+          title: "Staff Details Required",
+          description: "Please lookup a valid staff member first.",
+          variant: "destructive",
         });
         return;
       }
       
       if (!officeName) {
         toast({
-          title: "Missing Office",
-          description: "Please enter an office name.",
-          variant: "destructive"
+          title: "Office Required",
+          description: "Please select a receiving office.",
+          variant: "destructive",
         });
         return;
       }
       
-      if (selectedItems.length === 0 || selectedItems.some(item => !item.itemId)) {
+      if (selectedItems.length === 0) {
         toast({
-          title: "Missing Items",
+          title: "No Items Selected",
           description: "Please select at least one item to issue.",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
-      }
-      
-      // Check if quantities are valid
-      for (const item of selectedItems) {
-        const availableQty = getAvailableQuantity(item.itemId);
-        if (item.quantity <= 0 || item.quantity > availableQty) {
-          toast({
-            title: "Invalid Quantity",
-            description: `Please enter a valid quantity for ${getItemName(item.itemId)} (Available: ${availableQty})`,
-            variant: "destructive"
-          });
-          return;
-        }
       }
       
       // Create issuance voucher
-      const voucher = createDistrictIssuanceVoucher({
-        ivNumber: '', // This will be generated automatically
+      const ivData = {
         issueDate: new Date().toISOString(),
         issuedByUserId: users[0].id, // Using first user for demo
-        receivingStaffGNo: receivingStaff.gNo,
-        receivingOfficeName: officeName,
-      });
+        receivingStaffGNo: staffGNo,
+        receivingOfficeName: officeName
+      };
       
-      // Process item movements
+      const voucher = createDistrictIssuanceVoucher(ivData);
+      
+      // Create item movements for each selected item
       selectedItems.forEach(item => {
-        const isReturnable = isItemReturnable(item.itemId);
-        
         addDistrictItemMovement({
-          districtId,
+          districtId: districtId,
           districtIvId: voucher.id,
           itemId: item.itemId,
           quantity: item.quantity,
           movementType: 'Issue_To_Internal',
-          isReturnable,
+          isReturnable: item.isReturnable,
           returnedQuantity: 0
         });
       });
       
+      // Successful issuance
       toast({
         title: "Issuance Successful",
-        description: `IV ${voucher.ivNumber} has been created.`
+        description: `IV ${voucher.ivNumber} has been created.`,
       });
       
       // Reset form
-      setGNo('');
+      setStaffGNo('');
+      setStaffDetails(null);
       setOfficeName('');
-      setReceivingStaff(null);
       setSelectedItems([]);
+      setAvailableStock(prev => prev.map(item => ({ ...item, selected: false, issueQuantity: 0 })));
+      
     } catch (error) {
+      console.error('Error creating IV:', error);
       toast({
-        title: "Error",
-        description: "An error occurred while processing the issuance.",
-        variant: "destructive"
+        title: "Error Creating IV",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
       });
-      console.error(error);
     }
   };
 
@@ -226,144 +218,150 @@ const IssueToOffices: React.FC = () => {
       <div className="flex flex-col gap-8">
         <Card className="w-full">
           <CardHeader className="bg-apBlue-50">
-            <CardTitle className="text-apBlue-700">Issue Items to Offices</CardTitle>
+            <CardTitle className="text-apBlue-700">Issue to Internal Offices</CardTitle>
             <CardDescription>
-              Issue inventory items to internal offices within your district
+              Issue items from district store to internal offices
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="space-y-6">
-              {/* Receiver Details */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Receiver Details</h3>
-                
-                <div className="flex items-end gap-4">
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="g-no">G No.</Label>
+            <div className="grid gap-6">
+              {/* Staff Lookup */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="g-no">Staff G No.</Label>
+                  <div className="flex gap-2">
                     <Input 
                       id="g-no" 
-                      value={gNo} 
-                      onChange={(e) => setGNo(e.target.value)} 
+                      value={staffGNo} 
+                      onChange={(e) => setStaffGNo(e.target.value)} 
                       placeholder="Enter G No."
                     />
+                    <Button type="button" onClick={handleStaffLookup}>Lookup</Button>
                   </div>
-                  <Button onClick={handleGNoLookup}>Verify</Button>
                 </div>
-                
-                {receivingStaff && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-apBlue-50 rounded-md">
-                    <div>
-                      <p className="text-sm font-medium">Name</p>
-                      <p>{receivingStaff.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Rank</p>
-                      <p>{receivingStaff.rank}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Place of Posting</p>
-                      <p>{receivingStaff.placeOfPosting}</p>
-                    </div>
+
+                {staffDetails && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Name: {staffDetails.name}</p>
+                    <p className="text-sm">Rank: {staffDetails.rank}</p>
+                    <p className="text-sm">Place of Posting: {staffDetails.placeOfPosting}</p>
+                    <p className="text-sm">Mobile: {staffDetails.mobileNumber}</p>
                   </div>
                 )}
-                
-                <div className="space-y-2">
-                  <Label htmlFor="office">Receiving Office</Label>
-                  <Input 
-                    id="office" 
-                    value={officeName} 
-                    onChange={(e) => setOfficeName(e.target.value)}
-                    placeholder="e.g. Traffic Police Station, DSP Office"
-                  />
-                </div>
               </div>
-              
-              {/* Item Selection */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">Items to Issue</h3>
-                  <Button variant="outline" onClick={handleAddItem} className="flex items-center gap-1">
-                    <Plus className="h-4 w-4" />
-                    <span>Add Item</span>
-                  </Button>
-                </div>
-                
-                <div className="space-y-4">
-                  {selectedItems.map((item, index) => (
-                    <div key={index} className="flex items-center gap-4 p-3 border rounded-md">
-                      <div className="flex-1 space-y-2">
-                        <Label htmlFor={`item-${index}`}>Item</Label>
-                        <Select 
-                          value={item.itemId} 
-                          onValueChange={(value) => handleItemChange(index, value)}
-                        >
-                          <SelectTrigger id={`item-${index}`}>
-                            <SelectValue placeholder="Select Item" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableItems.map((availableItem) => (
-                              <SelectItem key={availableItem.id} value={availableItem.id}>
-                                {availableItem.name} ({availableItem.code})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="w-24 space-y-2">
-                        <Label htmlFor={`qty-${index}`}>Quantity</Label>
-                        <Input
-                          id={`qty-${index}`}
-                          type="number"
-                          min={1}
-                          max={item.itemId ? getAvailableQuantity(item.itemId) : 1}
-                          value={item.quantity}
-                          onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
-                        />
-                      </div>
-                      
-                      {item.itemId && (
-                        <div className="text-sm">
-                          <p className="font-medium">Available: {getAvailableQuantity(item.itemId)}</p>
-                          <p className="text-muted-foreground">{getMetricForItem(item.itemId)}</p>
-                        </div>
-                      )}
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleRemoveItem(index)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  
-                  {selectedItems.length === 0 && (
-                    <p className="text-center text-muted-foreground py-4">
-                      No items added. Click "Add Item" to select items to issue.
-                    </p>
-                  )}
-                </div>
+
+              {/* Office Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="office">Receiving Office</Label>
+                <Select value={officeName} onValueChange={setOfficeName}>
+                  <SelectTrigger id="office">
+                    <SelectValue placeholder="Select office" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {officeOptions.map((office) => (
+                      <SelectItem key={office} value={office}>{office}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              
-              <div className="flex justify-end">
-                <Button onClick={handleSubmitIssuance} disabled={!receivingStaff || !officeName || selectedItems.length === 0}>
+
+              {/* Available Items */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">Available Items</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12"></TableHead>
+                      <TableHead>Item Code</TableHead>
+                      <TableHead>Item Name</TableHead>
+                      <TableHead>Available Quantity</TableHead>
+                      <TableHead>Quantity to Issue</TableHead>
+                      <TableHead>Returnable</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {availableStock.length > 0 ? (
+                      availableStock.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <Checkbox 
+                              checked={item.selected} 
+                              onCheckedChange={() => handleItemToggle(item.id)} 
+                            />
+                          </TableCell>
+                          <TableCell>{item.itemCode}</TableCell>
+                          <TableCell>{item.itemName}</TableCell>
+                          <TableCell>{item.quantity} {item.metricName}</TableCell>
+                          <TableCell>
+                            <Input 
+                              type="number" 
+                              min={0}
+                              max={item.quantity}
+                              value={item.issueQuantity} 
+                              onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
+                              disabled={!item.selected}
+                              className="w-20"
+                            />
+                          </TableCell>
+                          <TableCell>{item.isReturnable ? 'Yes' : 'No'}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-4">No items available in stock</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Selected Items Summary */}
+              {selectedItems.length > 0 && (
+                <div className="space-y-2 mt-6">
+                  <h3 className="text-lg font-medium">Items to Issue</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item Name</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Returnable</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedItems.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{item.itemName}</TableCell>
+                          <TableCell>{item.quantity} {item.metricName}</TableCell>
+                          <TableCell>{item.isReturnable ? 'Yes' : 'No'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Create IV Button */}
+              <div className="flex justify-end mt-6">
+                <Button 
+                  onClick={handleCreateIV} 
+                  disabled={!staffDetails || !officeName || selectedItems.length === 0}
+                >
                   Create Issuance Voucher
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
-        
-        {/* Recent Issuances */}
+
+        {/* Issued Vouchers History */}
         <Card className="w-full">
-          <CardHeader>
-            <CardTitle>Recent Issuances</CardTitle>
-            <CardDescription>Recently issued items to internal offices</CardDescription>
+          <CardHeader className="bg-apBlue-50">
+            <CardTitle className="text-apBlue-700">Issuance History</CardTitle>
+            <CardDescription>
+              View history of previously issued items to internal offices
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -375,11 +373,8 @@ const IssueToOffices: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {/* This will be populated with actual district issuance data */}
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                    No recent issuances
-                  </TableCell>
+                  <TableCell colSpan={5} className="text-center py-4">No issuance history found</TableCell>
                 </TableRow>
               </TableBody>
             </Table>

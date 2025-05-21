@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,11 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
 const LarFromOffices: React.FC = () => {
   const { 
     districtIssuanceVouchers, 
     districtItemMovements, 
+    districtLarVouchers,
     items,
     metrics,
     users,
@@ -33,6 +36,46 @@ const LarFromOffices: React.FC = () => {
     quantity: number;
     maxQuantity: number;
   }[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
+
+  // Populate the LAR history with combined data
+  useEffect(() => {
+    const history = districtLarVouchers.map(larVoucher => {
+      const originalIv = districtIssuanceVouchers.find(iv => iv.id === larVoucher.districtIvIdRef);
+      
+      // Get movements associated with this LAR
+      const movements = districtItemMovements.filter(m => m.districtLarId === larVoucher.id);
+      
+      // Count items and calculate total quantity
+      const itemCount = movements.length;
+      const totalQuantity = movements.reduce((sum, m) => sum + m.quantity, 0);
+      
+      return {
+        ...larVoucher,
+        originalIvNumber: originalIv?.ivNumber || 'Unknown',
+        officeName: originalIv?.receivingOfficeName || 'Unknown',
+        itemCount,
+        totalQuantity
+      };
+    });
+
+    // Apply date filter if set
+    let filtered = history;
+    if (dateRange?.from) {
+      filtered = filtered.filter(lar => {
+        const larDate = new Date(lar.returnDate);
+        if (dateRange.from && dateRange.to) {
+          return larDate >= dateRange.from && larDate <= dateRange.to;
+        } else if (dateRange.from) {
+          return larDate >= dateRange.from;
+        }
+        return true;
+      });
+    }
+
+    setFilteredHistory(filtered);
+  }, [districtLarVouchers, districtIssuanceVouchers, districtItemMovements, dateRange]);
 
   // Fetch issuable items when IV is selected
   const handleIVSelect = (ivNumber: string) => {
@@ -133,14 +176,11 @@ const LarFromOffices: React.FC = () => {
 
   // Get metric name by ID
   const getMetricName = (itemId: string) => {
-    // Find this item in district movements to get the metric
     const movement = districtItemMovements.find(m => m.itemId === itemId);
     if (!movement) return '';
     
-    const stock = movement.metricId ? { metricId: movement.metricId } : null; 
-    if (!stock) return '';
-    
-    const metric = metrics.find(m => m.id === stock.metricId);
+    // Find the corresponding metric
+    const metric = metrics.find(m => m.id === movement.metricId);
     return metric ? metric.name : '';
   };
 
@@ -255,6 +295,10 @@ const LarFromOffices: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
+            <div className="mb-6">
+              <Label className="mb-2 block">Filter by date range</Label>
+              <DatePickerWithRange value={dateRange} onChange={setDateRange} className="w-[300px]" />
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -266,11 +310,23 @@ const LarFromOffices: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4">
-                    No LAR history found
-                  </TableCell>
-                </TableRow>
+                {filteredHistory.length > 0 ? (
+                  filteredHistory.map((lar) => (
+                    <TableRow key={lar.id}>
+                      <TableCell className="font-medium">{lar.larNumber}</TableCell>
+                      <TableCell>{new Date(lar.returnDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{lar.originalIvNumber}</TableCell>
+                      <TableCell>{lar.officeName}</TableCell>
+                      <TableCell>{lar.itemCount} items, {lar.totalQuantity} units</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-4">
+                      No LAR history found
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
