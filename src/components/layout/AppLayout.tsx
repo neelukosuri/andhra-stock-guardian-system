@@ -9,7 +9,8 @@ import {
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuButton
+  SidebarMenuButton,
+  SidebarProvider
 } from "@/components/ui/sidebar";
 import { NavLink } from 'react-router-dom';
 import { 
@@ -92,63 +93,65 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <div className="flex min-h-screen w-full bg-apGray-100">
-      <Sidebar
-        className={sidebarCollapsed ? "w-14" : "w-60"}
-        collapsible
-      >
-        <div className="h-16 flex items-center justify-center border-b border-apGray-200">
-          <h2 className="font-semibold text-lg text-apBlue-800">AP Police Comms</h2>
-        </div>
-        
-        <SidebarContent className="p-2">
-          <SidebarGroup defaultOpen>
-            <SidebarGroupLabel className="text-apGray-600 text-xs uppercase tracking-wider font-medium px-3 py-2">
-              Main Navigation
-            </SidebarGroupLabel>
-            
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {links.map(link => (
-                  <SidebarMenuItem key={link.path}>
-                    <SidebarMenuButton asChild>
-                      <NavLink to={link.path} className={getNavClass}>
-                        {link.icon}
-                        <span>{!sidebarCollapsed && link.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          
-          <div className="absolute bottom-0 left-0 w-full border-t border-apGray-200 p-2">
-            <div className="flex flex-col gap-1">
-              <button 
-                onClick={toggleRole}
-                className="flex items-center w-full px-3 py-2 rounded-md hover:bg-apGray-100 transition-colors text-apGray-700"
-              >
-                <Settings className="w-5 h-5 mr-3" />
-                {!sidebarCollapsed && <span>Switch Role</span>}
-              </button>
-              <button 
-                onClick={handleLogout}
-                className="flex items-center w-full px-3 py-2 rounded-md hover:bg-apGray-100 transition-colors text-apGray-700"
-              >
-                <LogOut className="w-5 h-5 mr-3" />
-                {!sidebarCollapsed && <span>Logout</span>}
-              </button>
-            </div>
+      <SidebarProvider>
+        <Sidebar
+          className={sidebarCollapsed ? "w-14" : "w-60"}
+          collapsible="icon"
+        >
+          <div className="h-16 flex items-center justify-center border-b border-apGray-200">
+            <h2 className="font-semibold text-lg text-apBlue-800">AP Police Comms</h2>
           </div>
-        </SidebarContent>
-      </Sidebar>
-      
-      <div className="flex flex-col flex-1">
-        <AppHeader userRole={userRole} />
-        <main className="flex-1 p-6 overflow-auto animate-fade-in">
-          {children}
-        </main>
-      </div>
+          
+          <SidebarContent className="p-2">
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-apGray-600 text-xs uppercase tracking-wider font-medium px-3 py-2">
+                Main Navigation
+              </SidebarGroupLabel>
+              
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {links.map(link => (
+                    <SidebarMenuItem key={link.path}>
+                      <SidebarMenuButton asChild>
+                        <NavLink to={link.path} className={getNavClass}>
+                          {link.icon}
+                          <span>{!sidebarCollapsed && link.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            
+            <div className="absolute bottom-0 left-0 w-full border-t border-apGray-200 p-2">
+              <div className="flex flex-col gap-1">
+                <button 
+                  onClick={toggleRole}
+                  className="flex items-center w-full px-3 py-2 rounded-md hover:bg-apGray-100 transition-colors text-apGray-700"
+                >
+                  <Settings className="w-5 h-5 mr-3" />
+                  {!sidebarCollapsed && <span>Switch Role</span>}
+                </button>
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center w-full px-3 py-2 rounded-md hover:bg-apGray-100 transition-colors text-apGray-700"
+                >
+                  <LogOut className="w-5 h-5 mr-3" />
+                  {!sidebarCollapsed && <span>Logout</span>}
+                </button>
+              </div>
+            </div>
+          </SidebarContent>
+        </Sidebar>
+        
+        <div className="flex flex-col flex-1">
+          <AppHeader userRole={userRole} />
+          <main className="flex-1 p-6 overflow-auto animate-fade-in">
+            {children}
+          </main>
+        </div>
+      </SidebarProvider>
     </div>
   );
 };
