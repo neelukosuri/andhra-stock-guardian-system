@@ -107,9 +107,12 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
+  
+  // We now use state === "expanded" instead of collapsed
+  const collapsed = state === "collapsed";
 
   /* Helper to check if a URL is active */
   const isActive = (path: string) => currentPath === path;
@@ -130,7 +133,7 @@ export function AppSidebar() {
       className={`border-r border-gray-200 bg-white transition-all ${
         collapsed ? 'w-14' : 'w-64'
       }`}
-      collapsible
+      collapsible="icon"
     >
       {/* Mobile-friendly trigger */}
       <SidebarTrigger className="m-2 self-end" />
@@ -140,7 +143,7 @@ export function AppSidebar() {
           menuGroup.items ? (
             <SidebarGroup
               key={index}
-              open={isGroupActive(menuGroup.items)}
+              defaultOpen={isGroupActive(menuGroup.items)}
             >
               <SidebarGroupLabel className={`${collapsed ? 'sr-only' : ''}`}>
                 {menuGroup.label}
