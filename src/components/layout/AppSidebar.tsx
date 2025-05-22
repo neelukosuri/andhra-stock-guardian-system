@@ -8,8 +8,8 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuButton,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -25,7 +25,8 @@ import {
   Users,
   Settings,
   Building,
-  BarChart3
+  BarChart3,
+  ArrowLeft
 } from 'lucide-react';
 
 const menuItems = [
@@ -48,11 +49,6 @@ const menuItems = [
         href: '/stock-management'
       },
       {
-        label: 'Loan Items',
-        icon: Truck,
-        href: '/loan-items'
-      },
-      {
         label: 'Issue To Districts',
         icon: Send,
         href: '/issue-to-districts'
@@ -61,6 +57,16 @@ const menuItems = [
         label: 'LAR From Districts',
         icon: RotateCcw,
         href: '/lar-from-districts'
+      },
+      {
+        label: 'Loan Items',
+        icon: Truck,
+        href: '/loan-items'
+      },
+      {
+        label: 'Loan Items Return',
+        icon: ArrowLeft,
+        href: '/loan-items-return'
       },
       {
         label: 'Reports',
@@ -143,7 +149,9 @@ export function AppSidebar() {
           menuGroup.items ? (
             <SidebarGroup
               key={index}
-              defaultOpen={isGroupActive(menuGroup.items)}
+              // Using open instead of defaultOpen for controlled component
+              open={isGroupActive(menuGroup.items)}
+              onOpenChange={() => {}}
             >
               <SidebarGroupLabel className={`${collapsed ? 'sr-only' : ''}`}>
                 {menuGroup.label}

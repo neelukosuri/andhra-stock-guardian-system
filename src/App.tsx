@@ -9,6 +9,7 @@ import Index from '@/pages/Index';
 import ItemMaster from '@/pages/ItemMaster';
 import StockManagement from '@/pages/StockManagement';
 import LoanItems from '@/pages/LoanItems';
+import LoanItemsReturn from '@/pages/LoanItemsReturn';
 import IssueToDistricts from '@/pages/IssueToDistricts';
 import LarFromDistricts from '@/pages/LarFromDistricts';
 import IssueToOffices from '@/pages/IssueToOffices';
@@ -30,6 +31,7 @@ function App() {
             <Route path="/item-master" element={<ItemMaster />} />
             <Route path="/stock-management" element={<StockManagement />} />
             <Route path="/loan-items" element={<LoanItems />} />
+            <Route path="/loan-items-return" element={<LoanItemsReturn />} />
             <Route path="/issue-to-districts" element={<IssueToDistricts />} />
             <Route path="/lar-from-districts" element={<LarFromDistricts />} />
             <Route path="/issue-to-offices" element={<IssueToOffices />} />

@@ -19,6 +19,22 @@ import {
   DistrictLARVoucher
 } from '@/types';
 
+// Add returnedTo and returnNotes properties to the LoanItem type
+interface LoanItem {
+  id: string;
+  itemId: string;
+  quantity: number;
+  metricId: string;
+  sourceWing: string;
+  eventName?: string;
+  expectedReturnDate: string;
+  actualReturnDate?: string;
+  status: 'Loaned' | 'Returned';
+  returnedTo?: string;
+  returnNotes?: string;
+  created_at?: string;
+}
+
 // Initial sample data
 const initialLedgers: Ledger[] = [
   {
@@ -403,20 +419,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newLoanItem;
   };
   
-  const updateLoanItem = (id: string, loanItemData: Partial<LoanItem>) => {
-    const index = loanItems.findIndex(l => l.id === id);
-    if (index === -1) return undefined;
-    
-    const updatedLoanItem = {
-      ...loanItems[index],
-      ...loanItemData,
-      updatedAt: new Date().toISOString(),
-    };
-    
-    const newLoanItems = [...loanItems];
-    newLoanItems[index] = updatedLoanItem;
-    setLoanItems(newLoanItems);
-    return updatedLoanItem;
+  const updateLoanItem = (id: string, updates: Partial<LoanItem>) => {
+    const updatedLoanItems = loanItems.map(item =>
+      item.id === id ? { ...item, ...updates } : item
+    );
+    setLoanItems(updatedLoanItems);
+    return updatedLoanItems.find(item => item.id === id);
   };
   
   // CRUD operations for Ledgers
@@ -886,7 +894,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   return (
-    <DataContext.Provider value={value}>
+    <DataContext.Provider
+      value={{
+        ...value,
+        loanItems,
+        addLoanItem,
+        updateLoanItem,
+      }}
+    >
       {children}
     </DataContext.Provider>
   );

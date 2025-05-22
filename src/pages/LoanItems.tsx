@@ -31,8 +31,9 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { SearchIcon, CheckCircleIcon, PlusCircleIcon } from 'lucide-react';
+import { SearchIcon, PlusCircleIcon, ArrowRightIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 const LoanItems = () => {
   const {
@@ -40,7 +41,6 @@ const LoanItems = () => {
     metrics,
     loanItems,
     addLoanItem,
-    updateLoanItem,
     getItemById,
     getMetricById
   } = useData();
@@ -71,7 +71,7 @@ const LoanItems = () => {
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
         loanItem.sourceWing.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loanItem.eventName.toLowerCase().includes(searchTerm.toLowerCase())
+        loanItem.eventName?.toLowerCase().includes(searchTerm.toLowerCase() || '')
       );
     });
     
@@ -154,35 +154,20 @@ const LoanItems = () => {
     }
   };
   
-  // Handler for marking loan item as returned
-  const handleMarkAsReturned = (id: string) => {
-    try {
-      const updatedLoanItem = updateLoanItem(id, {
-        status: 'Returned',
-        actualReturnDate: new Date().toISOString()
-      });
-      
-      const item = getItemById(updatedLoanItem?.itemId || '');
-      
-      toast({
-        title: "Success",
-        description: `${item?.name} marked as returned.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update loan item status. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-  
   return (
     <AppLayout>
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-semibold">Loan Item Management</h1>
-          <p className="text-apGray-600 mt-1">Manage items received on loan from other departments or agencies.</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-semibold">Loan Item Management</h1>
+            <p className="text-apGray-600 mt-1">Manage items received on loan from other departments or agencies.</p>
+          </div>
+          <Button asChild className="bg-blue-600 hover:bg-blue-700">
+            <Link to="/loan-items-return">
+              <ArrowRightIcon className="mr-2 h-4 w-4" />
+              Process Returns
+            </Link>
+          </Button>
         </div>
         
         {/* Add New Loan Item Form */}
@@ -326,13 +311,12 @@ const LoanItems = () => {
                   <TableHead>Event</TableHead>
                   <TableHead>Expected Return</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredLoanItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-4 text-gray-500">
                       {searchTerm ? 'No loan items matching your search.' : 'No loan items have been added yet.'}
                     </TableCell>
                   </TableRow>
@@ -340,9 +324,10 @@ const LoanItems = () => {
                   filteredLoanItems.map(loanItem => {
                     const item = getItemById(loanItem.itemId);
                     const metric = getMetricById(loanItem.metricId);
+                    const isOverdue = loanItem.status === 'Loaned' && new Date(loanItem.expectedReturnDate) < new Date();
                     
                     return (
-                      <TableRow key={loanItem.id}>
+                      <TableRow key={loanItem.id} className={isOverdue ? "bg-red-50" : ""}>
                         <TableCell>
                           {item ? (
                             <div>
@@ -357,8 +342,11 @@ const LoanItems = () => {
                         <TableCell>{loanItem.sourceWing}</TableCell>
                         <TableCell>{loanItem.eventName || '-'}</TableCell>
                         <TableCell>
-                          {loanItem.expectedReturnDate ? 
-                            new Date(loanItem.expectedReturnDate).toLocaleDateString() : '-'}
+                          <div className="flex items-center">
+                            {isOverdue && <span className="text-red-500 mr-1">●</span>}
+                            {loanItem.expectedReturnDate ? 
+                              new Date(loanItem.expectedReturnDate).toLocaleDateString() : '-'}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -367,19 +355,6 @@ const LoanItems = () => {
                             {loanItem.status}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          {loanItem.status === 'Loaned' && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="h-8 w-8 p-0 text-green-500 hover:text-green-600 hover:border-green-300"
-                              onClick={() => handleMarkAsReturned(loanItem.id)}
-                            >
-                              <CheckCircleIcon className="h-4 w-4" />
-                              <span className="sr-only">Mark as Returned</span>
-                            </Button>
-                          )}
-                        </TableCell>
                       </TableRow>
                     );
                   })
@@ -387,6 +362,14 @@ const LoanItems = () => {
               </TableBody>
             </Table>
           </CardContent>
+          <CardFooter className="flex justify-end">
+            <Button asChild variant="outline">
+              <Link to="/loan-items-return">
+                Go to Loan Items Return
+                <ArrowRightIcon className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     </AppLayout>
