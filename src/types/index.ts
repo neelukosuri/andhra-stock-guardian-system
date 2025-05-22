@@ -1,4 +1,3 @@
-
 // Common types
 export type UserRole = 'HQ_ADMIN' | 'DISTRICT_ADMIN';
 
@@ -110,9 +109,9 @@ export interface LoanItem {
   expectedReturnDate: string;
   actualReturnDate?: string;
   status: 'Loaned' | 'Returned';
-  returnedTo?: string;  // Adding this field
-  returnNotes?: string; // Adding this field
-  createdAt: string;    // Changed from created_at to createdAt
+  returnedTo?: string;  
+  returnNotes?: string;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -135,7 +134,7 @@ export interface HQItemMovement {
   larId?: string;
   itemId: string;
   quantity: number;
-  metricId?: string; // Added to fix build error
+  metricId?: string;
   movementType: 'Issue_To_District' | 'Return_From_District';
   isReturnable: boolean;
   returnedQuantity: number;
@@ -169,7 +168,7 @@ export interface DistrictIssuanceVoucher {
   issuedByUserId: string;
   receivingStaffGNo: string;
   receivingOfficeName: string;
-  districtId: string; // Adding this field
+  districtId: string; // Adding this field explicitly
   createdAt: string;
 }
 
@@ -180,7 +179,7 @@ export interface DistrictItemMovement {
   districtLarId?: string;
   itemId: string;
   quantity: number;
-  metricId?: string; // Added to fix build error
+  metricId?: string;
   movementType: 'Issue_To_Internal' | 'Return_From_Internal';
   isReturnable: boolean;
   returnedQuantity: number;

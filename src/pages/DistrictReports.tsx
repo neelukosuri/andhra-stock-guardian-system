@@ -87,7 +87,7 @@ const DistrictReports = () => {
   
   // Generate issuance report data for this district
   const issuanceReportData = districtIssuanceVouchers
-    .filter(iv => iv.districtId === districtId) // Ensure districtId is checked
+    .filter(iv => iv.districtId === districtId)
     .map(iv => {
       const movementsForIV = districtItemMovements.filter(m => m.districtIvId === iv.id);
       const totalItems = movementsForIV.length;
@@ -121,7 +121,7 @@ const DistrictReports = () => {
     .filter(lar => {
       // Find the related IV to check if it belongs to this district
       const iv = districtIssuanceVouchers.find(i => i.id === lar.districtIvIdRef);
-      return iv && iv.districtId === districtId; // Ensure districtId is checked
+      return iv && iv.districtId === districtId;
     })
     .map(lar => {
       const iv = districtIssuanceVouchers.find(i => i.id === lar.districtIvIdRef);

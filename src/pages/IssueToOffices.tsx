@@ -1,385 +1,390 @@
-
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { useData } from '@/contexts/DataContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from "@/components/ui/use-toast"
+import { useData } from '@/contexts/DataContext';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { DatePicker } from "@/components/ui/date-picker"
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { DistrictIssuanceVoucher, DistrictItemMovement } from '@/types';
 
-// Issue Items to Internal Offices component
-const IssueToOffices: React.FC = () => {
-  const {
-    items,
-    districtStock,
-    staff,
-    users,
-    metrics,
-    createDistrictIssuanceVoucher,
-    addDistrictItemMovement,
-    getStaffByGNo,
-    getItemById,
-    getMetricById,
-  } = useData();
-  const { toast } = useToast();
+const IssueToOffices = () => {
+  const { toast } = useToast()
+  const { items, communicationStaff, districtItemMovements, createDistrictIssuanceVoucher, createDistrictItemMovement } = useData();
 
-  // For demo purposes, we'll use district-1
-  const districtId = 'district-1';
-
-  // State
-  const [staffGNo, setStaffGNo] = useState('');
-  const [staffDetails, setStaffDetails] = useState<any>(null);
   const [officeName, setOfficeName] = useState('');
-  const [selectedItems, setSelectedItems] = useState<any[]>([]);
-  const [availableStock, setAvailableStock] = useState<any[]>([]);
-  const [issuedVouchers, setIssuedVouchers] = useState<any[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState('');
+  const [issueDate, setIssueDate] = useState<Date | undefined>(new Date());
+  const [selectedItems, setSelectedItems] = useState<{ itemId: string; quantity: number; metricId: string; }[]>([]);
 
-  // Office options
-  const officeOptions = [
-    'Commissioner Office', 
-    'DCP Office', 
-    'ACP Office', 
-    'Police Station', 
-    'Traffic Police Station',
-    'Law & Order Wing',
-    'Crime Wing',
-    'Special Branch',
-    'Admin Office'
-  ];
+  const staffOptions = communicationStaff.map(staff => ({
+    value: staff.gNo,
+    label: `${staff.name} (${staff.gNo})`
+  }));
 
-  // Load district stock on component mount
-  useEffect(() => {
-    // Filter stock for the current district and transform for display
-    const stockItems = districtStock
-      .filter(stock => stock.districtId === districtId && stock.quantity > 0)
-      .map(stock => {
-        const item = getItemById(stock.itemId);
-        const metric = getMetricById(stock.metricId);
-        
-        return {
-          id: stock.id,
-          itemId: stock.itemId,
-          itemName: item?.name || 'Unknown Item',
-          itemCode: item?.code || 'Unknown Code',
-          quantity: stock.quantity,
-          metricName: metric?.name || 'Unit',
-          isReturnable: stock.isReturnable,
-          selected: false,
-          issueQuantity: 0
-        };
-      });
-    
-    setAvailableStock(stockItems);
-  }, [districtStock, districtId, getItemById, getMetricById]);
+  const ItemSchema = z.object({
+    itemId: z.string().min(1, {
+      message: "Please select an item.",
+    }),
+    quantity: z.coerce.number().min(1, {
+      message: "Quantity must be greater than 0.",
+    }),
+    metricId: z.string().min(1, {
+      message: "Please select a unit.",
+    }),
+  })
 
-  // Handle staff G No. lookup
-  const handleStaffLookup = () => {
-    const staffMember = getStaffByGNo(staffGNo);
-    if (staffMember) {
-      setStaffDetails(staffMember);
+  const form = useForm<z.infer<typeof ItemSchema>>({
+    resolver: zodResolver(ItemSchema),
+    defaultValues: {
+      itemId: "",
+      quantity: 1,
+      metricId: "",
+    },
+  })
+
+  const [open, setOpen] = React.useState(false)
+
+  const addItem = (values: z.infer<typeof ItemSchema>) => {
+    const item = items.find(i => i.id === values.itemId);
+    if (!item) {
       toast({
-        title: "Staff Found",
-        description: `${staffMember.name}, ${staffMember.rank}`,
-      });
-    } else {
-      setStaffDetails(null);
-      toast({
-        title: "Staff Not Found",
-        description: "No staff member found with this G No.",
+        title: "Error",
+        description: "Item not found.",
         variant: "destructive",
-      });
+      })
+      return;
     }
+
+    const newItem = {
+      itemId: values.itemId,
+      quantity: values.quantity,
+      metricId: values.metricId,
+    };
+
+    setSelectedItems([...selectedItems, newItem]);
+    setOpen(false);
+    form.reset();
+    toast({
+      title: "Success",
+      description: `${item.name} added to issuance list.`,
+    })
   };
 
-  // Toggle item selection
-  const handleItemToggle = (stockId: string) => {
-    setAvailableStock(prev => prev.map(item => 
-      item.id === stockId ? { ...item, selected: !item.selected, issueQuantity: !item.selected ? 1 : 0 } : item
-    ));
-    
-    updateSelectedItems();
+  const removeItem = (itemId: string) => {
+    setSelectedItems(selectedItems.filter(item => item.itemId !== itemId));
   };
 
-  // Update quantity to issue
-  const handleQuantityChange = (stockId: string, value: number) => {
-    setAvailableStock(prev => prev.map(item => {
-      if (item.id === stockId) {
-        // Ensure quantity doesn't exceed available stock
-        const newQuantity = Math.min(Math.max(0, value), item.quantity);
-        return { ...item, issueQuantity: newQuantity };
-      }
-      return item;
-    }));
-    
-    updateSelectedItems();
+  const handleSubmit = () => {
+    if (selectedItems.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add items to the issuance list.",
+        variant: "destructive",
+      })
+      return;
+    }
+
+    if (!officeName) {
+      toast({
+        title: "Error",
+        description: "Please enter the receiving office name.",
+        variant: "destructive",
+      })
+      return;
+    }
+
+    if (!selectedStaff) {
+      toast({
+        title: "Error",
+        description: "Please select the receiving staff.",
+        variant: "destructive",
+      })
+      return;
+    }
+
+    if (!issueDate) {
+      toast({
+        title: "Error",
+        description: "Please select the issue date.",
+        variant: "destructive",
+      })
+      return;
+    }
+
+    createIssuanceVoucher();
   };
 
-  // Update selected items list based on available stock selections
-  const updateSelectedItems = () => {
-    const items = availableStock
-      .filter(item => item.selected && item.issueQuantity > 0)
-      .map(item => ({
-        stockId: item.id,
-        itemId: item.itemId,
-        itemName: item.itemName,
-        quantity: item.issueQuantity,
-        metricName: item.metricName,
-        isReturnable: item.isReturnable
-      }));
-    
-    setSelectedItems(items);
-  };
-
-  // Handle form submission to create IV
-  const handleCreateIV = () => {
+  const createIssuanceVoucher = async () => {
     try {
-      // Validate inputs
-      if (!staffDetails) {
-        toast({
-          title: "Staff Details Required",
-          description: "Please lookup a valid staff member first.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (!officeName) {
-        toast({
-          title: "Office Required",
-          description: "Please select a receiving office.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (selectedItems.length === 0) {
-        toast({
-          title: "No Items Selected",
-          description: "Please select at least one item to issue.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Create issuance voucher
-      const ivData = {
-        issueDate: new Date().toISOString(),
-        issuedByUserId: users[0].id, // Using first user for demo
-        receivingStaffGNo: staffGNo,
-        receivingOfficeName: officeName
+      // Create the issuance voucher first
+      const newIv: Omit<DistrictIssuanceVoucher, 'id' | 'createdAt' | 'ivNumber'> = {
+        issueDate: issueDate.toISOString().split('T')[0],
+        issuedByUserId: 'user-1', // In a real app, this would come from auth context
+        receivingStaffGNo: selectedStaff,
+        receivingOfficeName: officeName,
+        districtId: 'district-1', // Adding the districtId
       };
-      
-      const voucher = createDistrictIssuanceVoucher(ivData);
-      
-      // Create item movements for each selected item
-      selectedItems.forEach(item => {
-        addDistrictItemMovement({
-          districtId: districtId,
-          districtIvId: voucher.id,
+
+      const iv = await createDistrictIssuanceVoucher(newIv);
+
+      // Then create the item movements
+      for (const item of selectedItems) {
+        const newItemMovement: Omit<DistrictItemMovement, 'id' | 'createdAt' | 'districtId' | 'isReturnable' | 'returnedQuantity'> = {
+          districtIvId: iv.id,
           itemId: item.itemId,
           quantity: item.quantity,
+          metricId: item.metricId,
           movementType: 'Issue_To_Internal',
-          isReturnable: item.isReturnable,
-          returnedQuantity: 0
-        });
-      });
-      
-      // Successful issuance
+        };
+        await createDistrictItemMovement({ ...newItemMovement, districtId: 'district-1', isReturnable: false, returnedQuantity: 0 });
+      }
+
       toast({
-        title: "Issuance Successful",
-        description: `IV ${voucher.ivNumber} has been created.`,
-      });
-      
-      // Reset form
-      setStaffGNo('');
-      setStaffDetails(null);
+        title: "Success",
+        description: "Issuance voucher created successfully.",
+      })
+
+      // Reset the form
       setOfficeName('');
+      setSelectedStaff('');
+      setIssueDate(new Date());
       setSelectedItems([]);
-      setAvailableStock(prev => prev.map(item => ({ ...item, selected: false, issueQuantity: 0 })));
-      
     } catch (error) {
-      console.error('Error creating IV:', error);
       toast({
-        title: "Error Creating IV",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Error",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
-      });
+      })
     }
   };
 
   return (
     <AppLayout>
-      <div className="flex flex-col gap-8">
-        <Card className="w-full">
-          <CardHeader className="bg-apBlue-50">
-            <CardTitle className="text-apBlue-700">Issue to Internal Offices</CardTitle>
-            <CardDescription>
-              Issue items from district store to internal offices
-            </CardDescription>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Issue Items to Internal Offices</h1>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Issuance Details</CardTitle>
+            <CardDescription>Enter the details for the item issuance.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid gap-6">
-              {/* Staff Lookup */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="g-no">Staff G No.</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="g-no" 
-                      value={staffGNo} 
-                      onChange={(e) => setStaffGNo(e.target.value)} 
-                      placeholder="Enter G No."
-                    />
-                    <Button type="button" onClick={handleStaffLookup}>Lookup</Button>
-                  </div>
-                </div>
-
-                {staffDetails && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Name: {staffDetails.name}</p>
-                    <p className="text-sm">Rank: {staffDetails.rank}</p>
-                    <p className="text-sm">Place of Posting: {staffDetails.placeOfPosting}</p>
-                    <p className="text-sm">Mobile: {staffDetails.mobileNumber}</p>
-                  </div>
-                )}
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="officeName">Receiving Office Name</Label>
+                <Input
+                  id="officeName"
+                  value={officeName}
+                  onChange={(e) => setOfficeName(e.target.value)}
+                />
               </div>
-
-              {/* Office Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="office">Receiving Office</Label>
-                <Select value={officeName} onValueChange={setOfficeName}>
-                  <SelectTrigger id="office">
-                    <SelectValue placeholder="Select office" />
+              <div>
+                <Label htmlFor="receivingStaff">Receiving Staff</Label>
+                <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select receiving staff" />
                   </SelectTrigger>
                   <SelectContent>
-                    {officeOptions.map((office) => (
-                      <SelectItem key={office} value={office}>{office}</SelectItem>
+                    {staffOptions.map((staff) => (
+                      <SelectItem key={staff.value} value={staff.value}>
+                        {staff.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
-              {/* Available Items */}
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Available Items</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12"></TableHead>
-                      <TableHead>Item Code</TableHead>
-                      <TableHead>Item Name</TableHead>
-                      <TableHead>Available Quantity</TableHead>
-                      <TableHead>Quantity to Issue</TableHead>
-                      <TableHead>Returnable</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {availableStock.length > 0 ? (
-                      availableStock.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <Checkbox 
-                              checked={item.selected} 
-                              onCheckedChange={() => handleItemToggle(item.id)} 
-                            />
-                          </TableCell>
-                          <TableCell>{item.itemCode}</TableCell>
-                          <TableCell>{item.itemName}</TableCell>
-                          <TableCell>{item.quantity} {item.metricName}</TableCell>
-                          <TableCell>
-                            <Input 
-                              type="number" 
-                              min={0}
-                              max={item.quantity}
-                              value={item.issueQuantity} 
-                              onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
-                              disabled={!item.selected}
-                              className="w-20"
-                            />
-                          </TableCell>
-                          <TableCell>{item.isReturnable ? 'Yes' : 'No'}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4">No items available in stock</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Selected Items Summary */}
-              {selectedItems.length > 0 && (
-                <div className="space-y-2 mt-6">
-                  <h3 className="text-lg font-medium">Items to Issue</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item Name</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Returnable</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedItems.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell>{item.itemName}</TableCell>
-                          <TableCell>{item.quantity} {item.metricName}</TableCell>
-                          <TableCell>{item.isReturnable ? 'Yes' : 'No'}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-
-              {/* Create IV Button */}
-              <div className="flex justify-end mt-6">
-                <Button 
-                  onClick={handleCreateIV} 
-                  disabled={!staffDetails || !officeName || selectedItems.length === 0}
-                >
-                  Create Issuance Voucher
-                </Button>
-              </div>
+            <div>
+              <Label>Issue Date</Label>
+              <DatePicker
+                value={issueDate}
+                onSelect={setIssueDate}
+                className="border rounded-md p-2 w-full"
+              />
             </div>
           </CardContent>
         </Card>
 
-        {/* Issued Vouchers History */}
-        <Card className="w-full">
-          <CardHeader className="bg-apBlue-50">
-            <CardTitle className="text-apBlue-700">Issuance History</CardTitle>
-            <CardDescription>
-              View history of previously issued items to internal offices
-            </CardDescription>
+        <Card>
+          <CardHeader>
+            <CardTitle>Items to Issue</CardTitle>
+            <CardDescription>Add items to the issuance list.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">Add Item</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add Item</DialogTitle>
+                  <DialogDescription>
+                    Add items to the issuance list.
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(addItem)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="itemId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Item</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select an item" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {items.map((item) => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="quantity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Quantity</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="1" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="metricId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Unit</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a unit" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {/* Assuming all items have the same metrics for simplicity */}
+                                {items[0]?.ledgerId === 'ledger-1' ?
+                                  <>
+                                    <SelectItem value="number">Number</SelectItem>
+                                  </>
+                                  :
+                                  <>
+                                    <SelectItem value="meters">Meters</SelectItem>
+                                    <SelectItem value="kilograms">Kilograms</SelectItem>
+                                  </>
+                                }
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="submit">Add to List</Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>IV Number</TableHead>
-                  <TableHead>Issue Date</TableHead>
-                  <TableHead>Receiving Office</TableHead>
-                  <TableHead>Receiving Staff</TableHead>
-                  <TableHead>Items Issued</TableHead>
+                  <TableHead>Item Name</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4">No issuance history found</TableCell>
-                </TableRow>
+                {selectedItems.map((item) => {
+                  const itemName = items.find(i => i.id === item.itemId)?.name || 'Unknown Item';
+                  return (
+                    <TableRow key={item.itemId}>
+                      <TableCell>{itemName}</TableCell>
+                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell>{item.metricId}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => removeItem(item.itemId)}>
+                          Remove
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {selectedItems.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center">No items added yet.</TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
+
+        <Button onClick={handleSubmit}>Create Issuance Voucher</Button>
       </div>
     </AppLayout>
   );

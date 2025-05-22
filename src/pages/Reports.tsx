@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
 import {
@@ -313,7 +313,7 @@ const Reports = () => {
                       return (
                         <TableRow key={stock.id}>
                           <TableCell>{stock.itemName}</TableCell>
-                          <TableCell>{item?.displayCode || 'N/A'}</TableCell>
+                          <TableCell>{item?.code || 'N/A'}</TableCell>
                           <TableCell>{stock.quantity}</TableCell>
                           <TableCell>{stock.metricName}</TableCell>
                           <TableCell>

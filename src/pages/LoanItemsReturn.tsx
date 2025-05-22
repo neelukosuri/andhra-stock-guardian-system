@@ -239,17 +239,20 @@ const LoanItemsReturn: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {loanItems.length > 0 ? (
-                  loanItems.map((loanItem) => (
-                    <TableRow key={loanItem.id}>
-                      <TableCell>{getItemName(loanItem.itemId)}</TableCell>
-                      <TableCell>{loanItem.sourceWing}</TableCell>
-                      <TableCell>{loanItem.eventName}</TableCell>
-                      <TableCell>{formatDate(loanItem.expectedReturnDate)}</TableCell>
-                      <TableCell>{formatDate(loanItem.actualReturnDate)}</TableCell>
-                      <TableCell>{loanItem.returnedTo || 'N/A'}</TableCell>
+                  loanItems.map((loan) => (
+                    <TableRow key={loan.id} className={loan.status === 'Returned' ? 'bg-green-50' : ''}>
+                      <TableCell>{getItemName(loan.itemId)}</TableCell>
+                      <TableCell>{loan.sourceWing}</TableCell>
+                      <TableCell>{loan.eventName}</TableCell>
+                      <TableCell>{formatDate(loan.expectedReturnDate)}</TableCell>
+                      <TableCell>{formatDate(loan.actualReturnDate)}</TableCell>
+                      <TableCell>{loan.returnedTo || 'N/A'}</TableCell>
                       <TableCell>
-                        <Badge variant={loanItem.status === 'Returned' ? 'secondary' : 'default'}>
-                          {loanItem.status}
+                        <Badge
+                          variant={loan.status === 'Returned' ? "outline" : "default"}
+                          className={loan.status === 'Returned' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}
+                        >
+                          {loan.status}
                         </Badge>
                       </TableCell>
                     </TableRow>
