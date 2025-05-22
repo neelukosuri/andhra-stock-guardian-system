@@ -1,31 +1,27 @@
 import React, { createContext, useContext, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  User, 
+  Ledger, 
+  QuantityMetric, 
+  Budget, 
+  District, 
+  CommunicationStaff, 
+  Item, 
+  HQStock, 
+  LoanItem, 
+  DistrictStock, 
+  HQIssuanceVoucher, 
+  HQItemMovement, 
+  HQLARVoucher, 
+  DistrictIssuanceVoucher, 
+  DistrictItemMovement, 
+  DistrictLARVoucher 
+} from '../types';
 
 // Define types for our data models
-type User = {
-  id: string;
-  username: string;
-  role: 'HQ_ADMIN' | 'DISTRICT_ADMIN';
-  districtId?: string;
-  isActive: boolean;
-}
-
-// Using LoanItem from local types rather than importing it
-type LoanItem = {
-  id: string;
-  itemId: string;
-  quantity: number;
-  metricId: string;
-  sourceWing: string;
-  eventName: string;
-  expectedReturnDate: string;
-  actualReturnDate?: string;
-  status: 'Loaned' | 'Returned';
-  returnedTo?: string;
-  returnNotes?: string;
-  created_at?: string;
-  updatedAt?: string;
-}
+// Removing the local User type since we're importing it from types
+// And removing the local LoanItem type since we're importing it from types
 
 // Initial sample data
 const initialLedgers: Ledger[] = [
@@ -162,7 +158,6 @@ const initialUsers: User[] = [
   {
     id: 'user-1',
     username: 'hqadmin',
-    password: 'password', // This would be hashed in a real app
     role: 'HQ_ADMIN',
     isActive: true,
     createdAt: new Date().toISOString(),
@@ -171,7 +166,6 @@ const initialUsers: User[] = [
   {
     id: 'user-2',
     username: 'districtadmin',
-    password: 'password', // This would be hashed in a real app
     role: 'DISTRICT_ADMIN',
     districtId: 'district-1',
     isActive: true,
