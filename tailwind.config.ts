@@ -66,16 +66,28 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
+                // Updated color palette based on the screenshot
                 apBlue: {
                     100: '#E6F0FF',
                     200: '#CCE0FF',
                     300: '#99C1FF',
                     400: '#66A1FF',
                     500: '#3381FF',
-                    600: '#0062FF',
-                    700: '#004ECC',
-                    800: '#003A99',
-                    900: '#002766'
+                    600: '#004080', // Dark blue from IOB
+                    700: '#003366', // Darker blue
+                    800: '#002952', // Even darker
+                    900: '#00213D'  // Darkest blue
+                },
+                apPurple: {
+                    100: '#F5E6FF',
+                    200: '#E9CCFF',
+                    300: '#D499FF',
+                    400: '#BE66FF',
+                    500: '#A333FF',
+                    600: '#8000FF', // Vibrant purple from the buttons in screenshot
+                    700: '#6600CC', // Darker purple
+                    800: '#4C0099', // Even darker
+                    900: '#330066'  // Darkest purple
                 },
                 apGray: {
                     100: '#F5F5F7',
@@ -92,7 +104,8 @@ export default {
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'calc(var(--radius) - 4px)',
+                full: '9999px', // For fully rounded buttons like in the screenshot
 			},
 			keyframes: {
 				'accordion-down': {

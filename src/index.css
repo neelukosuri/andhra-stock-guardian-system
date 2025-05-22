@@ -14,26 +14,28 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
 
-    --primary: 213 100% 50%;
+    /* Updated primary color to match IOB blue */
+    --primary: 212 100% 25%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    /* Updated secondary color to match the purple accent */
+    --secondary: 267 59% 40%;
+    --secondary-foreground: 0 0% 98%;
 
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 267 59% 40%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 213 100% 50%;
+    --ring: 212 100% 25%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
   }
 
   .dark {
@@ -46,16 +48,18 @@
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 213 100% 50%;
+    /* Updated primary color for dark mode */
+    --primary: 212 100% 40%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 240 3.7% 15.9%;
+    /* Updated secondary color for dark mode */
+    --secondary: 267 59% 40%;
     --secondary-foreground: 0 0% 98%;
 
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 240 3.7% 15.9%;
+    --accent: 267 59% 40%;
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -63,7 +67,7 @@
 
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 213 100% 50%;
+    --ring: 212 100% 40%;
   }
 }
 
@@ -108,23 +112,32 @@
     @apply rounded-xl border border-apGray-200 bg-white shadow-apple transition-shadow hover:shadow-apple-md;
   }
   
+  /* Updated button styles to match the screenshot */
   .ap-button-primary {
-    @apply bg-apBlue-600 text-white rounded-lg px-4 py-2 font-medium 
-           hover:bg-apBlue-700 active:bg-apBlue-800 
+    @apply bg-primary text-white rounded-lg px-4 py-2 font-medium 
+           hover:bg-primary/90 active:bg-primary/80 
            disabled:opacity-50 disabled:cursor-not-allowed
            transition-all duration-200 ease-in-out focus-ring;
   }
   
   .ap-button-secondary {
-    @apply bg-apGray-100 text-apGray-900 border border-apGray-200 rounded-lg px-4 py-2 font-medium
-           hover:bg-apGray-200 active:bg-apGray-300
+    @apply bg-secondary text-white border border-secondary rounded-lg px-4 py-2 font-medium
+           hover:bg-secondary/90 active:bg-secondary/80
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200 ease-in-out focus-ring;
+  }
+  
+  /* New purple button style to match "Save & Next" */
+  .ap-button-purple {
+    @apply bg-secondary text-white rounded-full px-6 py-2 font-medium 
+           hover:bg-secondary/90 active:bg-secondary/80 
            disabled:opacity-50 disabled:cursor-not-allowed
            transition-all duration-200 ease-in-out focus-ring;
   }
   
   .ap-input {
     @apply w-full rounded-lg border border-apGray-300 px-3 py-2
-           focus:outline-none focus:border-apBlue-500 focus:ring-1 focus:ring-apBlue-500
+           focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary
            placeholder:text-apGray-500
            transition-all duration-200 ease-in-out;
   }
@@ -138,7 +151,7 @@
   }
   
   .ap-badge-blue {
-    @apply ap-badge bg-apBlue-100 text-apBlue-800;
+    @apply ap-badge bg-primary/10 text-primary;
   }
   
   .ap-badge-gray {
