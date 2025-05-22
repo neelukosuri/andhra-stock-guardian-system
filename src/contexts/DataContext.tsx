@@ -33,6 +33,7 @@ interface LoanItem {
   returnedTo?: string;
   returnNotes?: string;
   created_at?: string;
+  updatedAt?: string;
 }
 
 // Initial sample data
@@ -217,7 +218,7 @@ interface DataContextType {
   updateHQStock: (id: string, stock: Partial<HQStock>) => HQStock | undefined;
   
   // CRUD operations for Loan Items
-  addLoanItem: (loanItem: Omit<LoanItem, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => LoanItem;
+  addLoanItem: (loanItem: Omit<LoanItem, 'id' | 'status' | 'created_at' | 'updatedAt'>) => LoanItem;
   updateLoanItem: (id: string, loanItem: Partial<LoanItem>) => LoanItem | undefined;
   
   // CRUD operations for Ledgers
@@ -406,12 +407,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   // CRUD operations for Loan Items
-  const addLoanItem = (loanItemData: Omit<LoanItem, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
+  const addLoanItem = (loanItemData: Omit<LoanItem, 'id' | 'status' | 'created_at' | 'updatedAt'>) => {
     const newLoanItem: LoanItem = {
       ...loanItemData,
       id: `loanitem-${uuidv4()}`,
       status: 'Loaned',
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     

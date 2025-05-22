@@ -149,9 +149,7 @@ export function AppSidebar() {
           menuGroup.items ? (
             <SidebarGroup
               key={index}
-              // Using open instead of defaultOpen for controlled component
-              open={isGroupActive(menuGroup.items)}
-              onOpenChange={() => {}}
+              defaultOpen={isGroupActive(menuGroup.items)}
             >
               <SidebarGroupLabel className={`${collapsed ? 'sr-only' : ''}`}>
                 {menuGroup.label}

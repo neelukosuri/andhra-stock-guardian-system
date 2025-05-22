@@ -78,7 +78,7 @@ const LoanItemsReturn = () => {
     
     try {
       const returnData = {
-        status: 'Returned',
+        status: 'Returned' as 'Loaned' | 'Returned',
         actualReturnDate: new Date().toISOString(),
         returnedTo: returnDetails.returnedTo,
         returnNotes: returnDetails.returnNotes
