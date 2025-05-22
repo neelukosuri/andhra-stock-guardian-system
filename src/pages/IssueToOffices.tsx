@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import {
@@ -18,7 +19,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useData } from '@/contexts/DataContext';
 import {
   Select,
@@ -56,14 +57,14 @@ import { DistrictIssuanceVoucher, DistrictItemMovement } from '@/types';
 
 const IssueToOffices = () => {
   const { toast } = useToast()
-  const { items, communicationStaff, districtItemMovements, createDistrictIssuanceVoucher, createDistrictItemMovement } = useData();
+  const { items, staff, districts, createDistrictIssuanceVoucher, addDistrictItemMovement } = useData();
 
   const [officeName, setOfficeName] = useState('');
   const [selectedStaff, setSelectedStaff] = useState('');
   const [issueDate, setIssueDate] = useState<Date | undefined>(new Date());
   const [selectedItems, setSelectedItems] = useState<{ itemId: string; quantity: number; metricId: string; }[]>([]);
 
-  const staffOptions = communicationStaff.map(staff => ({
+  const staffOptions = staff.map(staff => ({
     value: staff.gNo,
     label: `${staff.name} (${staff.gNo})`
   }));
@@ -165,7 +166,7 @@ const IssueToOffices = () => {
     try {
       // Create the issuance voucher first
       const newIv: Omit<DistrictIssuanceVoucher, 'id' | 'createdAt' | 'ivNumber'> = {
-        issueDate: issueDate.toISOString().split('T')[0],
+        issueDate: issueDate ? issueDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         issuedByUserId: 'user-1', // In a real app, this would come from auth context
         receivingStaffGNo: selectedStaff,
         receivingOfficeName: officeName,
@@ -183,7 +184,12 @@ const IssueToOffices = () => {
           metricId: item.metricId,
           movementType: 'Issue_To_Internal',
         };
-        await createDistrictItemMovement({ ...newItemMovement, districtId: 'district-1', isReturnable: false, returnedQuantity: 0 });
+        await addDistrictItemMovement({ 
+          ...newItemMovement, 
+          districtId: 'district-1', 
+          isReturnable: false, 
+          returnedQuantity: 0 
+        });
       }
 
       toast({

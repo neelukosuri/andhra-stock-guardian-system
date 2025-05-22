@@ -26,17 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { LoanItem } from '@/types';
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 const LoanItems = () => {
-  const { items, metrics, loanItems, createLoanItem: createLoanItemAction } = useData();
+  const { items, metrics, loanItems, addLoanItem } = useData();
   const [form, setForm] = useState({
     quantity: 1,
     expectedReturnDate: new Date(),
@@ -67,26 +62,27 @@ const LoanItems = () => {
   };
 
   const handleDateChange = (date: Date | undefined) => {
-    setForm(prev => ({
-      ...prev,
-      expectedReturnDate: date,
-    }));
+    if (date) {
+      setForm(prev => ({
+        ...prev,
+        expectedReturnDate: date,
+      }));
+    }
   };
 
   const createLoanItem = async () => {
     try {
-      const newLoanItem: Omit<LoanItem, 'id' | 'updatedAt' | 'status'> = {
+      const newLoanItem = {
         quantity: form.quantity,
         expectedReturnDate: form.expectedReturnDate.toISOString().split('T')[0],
         itemId: form.itemId,
         metricId: form.metricId,
         sourceWing: form.sourceWing,
         eventName: form.eventName,
-        createdAt: new Date().toISOString(), // Add the createdAt field
-        status: 'Loaned' // Add the status field
+        createdAt: new Date().toISOString()
       };
 
-      await createLoanItemAction(newLoanItem);
+      await addLoanItem(newLoanItem);
       toast({
         title: "Success",
         description: "Loan Item created successfully.",
