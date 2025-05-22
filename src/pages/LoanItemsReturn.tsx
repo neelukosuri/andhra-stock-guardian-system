@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useData } from '@/contexts/DataContext';
 import AppLayout from '@/components/layout/AppLayout';
@@ -249,7 +248,7 @@ const LoanItemsReturn: React.FC = () => {
                       <TableCell>{formatDate(loanItem.actualReturnDate)}</TableCell>
                       <TableCell>{loanItem.returnedTo || 'N/A'}</TableCell>
                       <TableCell>
-                        <Badge variant={loanItem.status === 'Returned' ? 'success' : 'default'}>
+                        <Badge variant={loanItem.status === 'Returned' ? 'secondary' : 'default'}>
                           {loanItem.status}
                         </Badge>
                       </TableCell>

@@ -158,6 +158,7 @@ const initialUsers: User[] = [
   {
     id: 'user-1',
     username: 'hqadmin',
+    password: 'password', // In a real app this would be a hash
     role: 'HQ_ADMIN',
     isActive: true,
     createdAt: new Date().toISOString(),
@@ -166,6 +167,7 @@ const initialUsers: User[] = [
   {
     id: 'user-2',
     username: 'districtadmin',
+    password: 'password', // In a real app this would be a hash
     role: 'DISTRICT_ADMIN',
     districtId: 'district-1',
     isActive: true,
@@ -397,7 +399,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...loanItemData,
       id: `loanitem-${uuidv4()}`,
       status: 'Loaned',
-      created_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
@@ -74,7 +73,7 @@ const DistrictReports = () => {
       return {
         ...stock,
         itemName: item?.name || 'Unknown Item',
-        itemCode: item?.itemCode || 'N/A',
+        itemCode: item?.code || 'N/A', // Use code instead of itemCode
         metricName: getMetricName(stock.metricId)
       };
     })
@@ -88,7 +87,7 @@ const DistrictReports = () => {
   
   // Generate issuance report data for this district
   const issuanceReportData = districtIssuanceVouchers
-    .filter(iv => iv.districtId === districtId)
+    .filter(iv => iv.districtId === districtId) // Ensure districtId is checked
     .map(iv => {
       const movementsForIV = districtItemMovements.filter(m => m.districtIvId === iv.id);
       const totalItems = movementsForIV.length;
@@ -122,7 +121,7 @@ const DistrictReports = () => {
     .filter(lar => {
       // Find the related IV to check if it belongs to this district
       const iv = districtIssuanceVouchers.find(i => i.id === lar.districtIvIdRef);
-      return iv && iv.districtId === districtId;
+      return iv && iv.districtId === districtId; // Ensure districtId is checked
     })
     .map(lar => {
       const iv = districtIssuanceVouchers.find(i => i.id === lar.districtIvIdRef);

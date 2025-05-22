@@ -126,6 +126,7 @@ const LoanItems = () => {
       const loanItem = addLoanItem({
         ...newLoanItem,
         quantity,
+        createdAt: new Date().toISOString(), // Add createdAt field
         expectedReturnDate: newLoanItem.expectedReturnDate || new Date().toISOString()
       });
       

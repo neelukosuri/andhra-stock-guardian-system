@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
 import {
@@ -214,6 +213,14 @@ const Reports = () => {
     alert("In a real application, this would download the report as a CSV/Excel file.");
   };
   
+  // Anywhere in the code where item.itemCode is used, replace with item.code
+  const processData = (items) => {
+    return items.map(item => ({
+      ...item,
+      displayCode: item.code // Use code instead of itemCode
+    }));
+  }
+  
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -306,7 +313,7 @@ const Reports = () => {
                       return (
                         <TableRow key={stock.id}>
                           <TableCell>{stock.itemName}</TableCell>
-                          <TableCell>{item?.itemCode || 'N/A'}</TableCell>
+                          <TableCell>{item?.displayCode || 'N/A'}</TableCell>
                           <TableCell>{stock.quantity}</TableCell>
                           <TableCell>{stock.metricName}</TableCell>
                           <TableCell>

@@ -72,6 +72,7 @@ export interface Item {
   ledgerId: string;
   createdAt: string;
   updatedAt: string;
+  itemCode?: string; // Adding this as some components are using it
 }
 
 export interface HQStock {
@@ -109,7 +110,9 @@ export interface LoanItem {
   expectedReturnDate: string;
   actualReturnDate?: string;
   status: 'Loaned' | 'Returned';
-  createdAt: string;
+  returnedTo?: string;  // Adding this field
+  returnNotes?: string; // Adding this field
+  createdAt: string;    // Changed from created_at to createdAt
   updatedAt: string;
 }
 
@@ -166,6 +169,7 @@ export interface DistrictIssuanceVoucher {
   issuedByUserId: string;
   receivingStaffGNo: string;
   receivingOfficeName: string;
+  districtId: string; // Adding this field
   createdAt: string;
 }
 
