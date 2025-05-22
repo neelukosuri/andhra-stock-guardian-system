@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
@@ -191,7 +192,6 @@ const LoanItems = () => {
               <div>
                 <Label htmlFor="expectedReturnDate">Expected Return Date</Label>
                 <DatePicker
-                  name="expectedReturnDate"
                   value={form.expectedReturnDate}
                   onChange={handleDateChange}
                 />
