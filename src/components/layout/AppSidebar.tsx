@@ -25,7 +25,9 @@ import {
   Users,
   Building,
   BarChart3,
-  ArrowLeft
+  ArrowLeft,
+  Settings,
+  Bell,
 } from 'lucide-react';
 
 const menuItems = [
@@ -35,79 +37,49 @@ const menuItems = [
     href: '/'
   },
   {
-    label: 'HQ Operations',
-    items: [
-      {
-        label: 'Item Master',
-        icon: Package,
-        href: '/item-master'
-      },
-      {
-        label: 'Stock Management',
-        icon: ClipboardList,
-        href: '/stock-management'
-      },
-      {
-        label: 'Issue To Districts',
-        icon: Send,
-        href: '/issue-to-districts'
-      },
-      {
-        label: 'LAR From Districts',
-        icon: RotateCcw,
-        href: '/lar-from-districts'
-      },
-      {
-        label: 'Loan Items',
-        icon: Truck,
-        href: '/loan-items'
-      },
-      {
-        label: 'Loan Items Return',
-        icon: ArrowLeft,
-        href: '/loan-items-return'
-      },
-      {
-        label: 'Reports',
-        icon: FileText,
-        href: '/reports'
-      }
-    ]
+    label: 'Item Master',
+    icon: Package,
+    href: '/item-master'
   },
   {
-    label: 'District Operations',
-    items: [
-      {
-        label: 'District Inventory',
-        icon: Building,
-        href: '/district-inventory'
-      },
-      {
-        label: 'Issue To Offices',
-        icon: Send,
-        href: '/issue-to-offices'
-      },
-      {
-        label: 'LAR From Offices',
-        icon: RotateCcw,
-        href: '/lar-from-offices'
-      },
-      {
-        label: 'District Reports',
-        icon: BarChart3,
-        href: '/district-reports'
-      }
-    ]
+    label: 'HQ Inventory',
+    icon: Building,
+    href: '/stock-management'
   },
   {
-    label: 'Administration',
-    items: [
-      {
-        label: 'User Management',
-        icon: Users,
-        href: '/user-management'
-      }
-    ]
+    label: 'Item Issuance',
+    icon: Send,
+    href: '/issue-to-districts'
+  },
+  {
+    label: 'Item Returns',
+    icon: RotateCcw,
+    href: '/lar-from-districts'
+  },
+  {
+    label: 'Local Inventory',
+    icon: ClipboardList,
+    href: '/district-inventory'
+  },
+  {
+    label: 'Reports',
+    icon: FileText,
+    href: '/reports'
+  },
+  {
+    label: 'Alerts',
+    icon: Bell,
+    href: '/alerts'
+  },
+  {
+    label: 'User Management',
+    icon: Users,
+    href: '/user-management'
+  },
+  {
+    label: 'Settings',
+    icon: Settings,
+    href: '/settings'
   }
 ];
 
@@ -122,65 +94,48 @@ export function AppSidebar() {
   /* Helper to check if a URL is active */
   const isActive = (path: string) => currentPath === path;
 
-  /* Helper to check if any child in a group is active */
-  const isGroupActive = (items: any[]) => items.some((item) => isActive(item.href));
-
   /* Helper for navigation link class based on active state */
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center w-full p-2 rounded-md transition-colors ${
+    `flex items-center w-full p-2.5 rounded-md transition-colors ${
       isActive
-        ? 'bg-primary text-primary-foreground'
-        : 'text-gray-700 hover:bg-slate-100'
+        ? 'bg-white/10 text-white font-medium'
+        : 'text-white/80 hover:bg-white/5 hover:text-white'
     }`;
 
   return (
     <Sidebar
-      className={`border-r border-gray-200 bg-white transition-all ${
-        collapsed ? 'w-14' : 'w-64'
+      className={`bg-[#1A3A67] border-r-0 shadow-md transition-all ${
+        collapsed ? 'w-16' : 'w-60'
       }`}
       collapsible="icon"
     >
+      {/* Logo section */}
+      <div className="h-16 flex items-center justify-center border-b border-white/10">
+        <div className="text-white font-bold text-2xl">
+          {collapsed ? "AP" : "AP POLICE"}
+        </div>
+      </div>
+
       {/* Mobile-friendly trigger */}
-      <SidebarTrigger className="m-2 self-end" />
+      <SidebarTrigger className="m-2 self-end text-white/80 hover:text-white" />
 
       <SidebarContent>
-        {menuItems.map((menuGroup, index) => (
-          menuGroup.items ? (
-            <SidebarGroup
-              key={index}
-            >
-              <SidebarGroupLabel className={`${collapsed ? 'sr-only' : ''}`}>
-                {menuGroup.label}
-              </SidebarGroupLabel>
-
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {menuGroup.items.map((item, itemIndex) => (
-                    <SidebarMenuItem key={itemIndex}>
-                      <SidebarMenuButton asChild>
-                        <NavLink to={item.href} end className={getNavClass}>
-                          <item.icon className="h-5 w-5" />
-                          {!collapsed && <span className="ml-3">{item.label}</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ) : (
-            <SidebarMenu key={index}>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink to={menuGroup.href} end className={getNavClass}>
-                    <menuGroup.icon className="h-5 w-5" />
-                    {!collapsed && <span className="ml-3">{menuGroup.label}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          )
-        ))}
+        <div className={`px-3 py-2 text-white/50 text-xs uppercase tracking-wider font-medium ${collapsed ? 'sr-only' : ''}`}>
+          Asset Management
+        </div>
+        
+        <SidebarMenu className="px-2">
+          {menuItems.map((item, index) => (
+            <SidebarMenuItem key={index}>
+              <SidebarMenuButton asChild>
+                <NavLink to={item.href} end className={getNavClass}>
+                  <item.icon className="h-5 w-5 min-w-5" />
+                  {!collapsed && <span className="ml-2.5 truncate">{item.label}</span>}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
       </SidebarContent>
     </Sidebar>
   );

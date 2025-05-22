@@ -68,15 +68,15 @@ export default {
 				},
                 // Updated color palette based on the screenshot
                 apBlue: {
-                    100: '#E6F0FF',
-                    200: '#CCE0FF',
-                    300: '#99C1FF',
-                    400: '#66A1FF',
-                    500: '#3381FF',
-                    600: '#004080', // Dark blue from IOB
-                    700: '#003366', // Darker blue
-                    800: '#002952', // Even darker
-                    900: '#00213D'  // Darkest blue
+                    100: '#E6EDF7',
+                    200: '#CCDAEE',
+                    300: '#99B5DD',
+                    400: '#6690CC',
+                    500: '#336BBB', // Light blue
+                    600: '#1A3A67', // Dark navy blue from sidebar in screenshot
+                    700: '#142C4F', // Darker blue
+                    800: '#0F1E37', // Even darker
+                    900: '#0A1424'  // Darkest blue
                 },
                 apPurple: {
                     100: '#F5E6FF',
