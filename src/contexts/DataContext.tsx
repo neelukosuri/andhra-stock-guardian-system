@@ -1,32 +1,23 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  User,
-  Ledger,
-  QuantityMetric,
-  Budget,
-  Item,
-  HQStock,
-  LoanItem,
-  District,
-  CommunicationStaff,
-  DistrictStock,
-  HQIssuanceVoucher,
-  HQItemMovement,
-  HQLARVoucher,
-  DistrictIssuanceVoucher,
-  DistrictItemMovement,
-  DistrictLARVoucher
-} from '@/types';
 
-// Add returnedTo and returnNotes properties to the LoanItem type
-interface LoanItem {
+// Define types for our data models
+type User = {
+  id: string;
+  username: string;
+  role: 'HQ_ADMIN' | 'DISTRICT_ADMIN';
+  districtId?: string;
+  isActive: boolean;
+}
+
+// Using LoanItem from local types rather than importing it
+type LoanItem = {
   id: string;
   itemId: string;
   quantity: number;
   metricId: string;
   sourceWing: string;
-  eventName?: string;
+  eventName: string;
   expectedReturnDate: string;
   actualReturnDate?: string;
   status: 'Loaned' | 'Returned';
@@ -416,7 +407,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updatedAt: new Date().toISOString(),
     };
     
-    setLoanItems(prev => [...prev, newLoanItem]);
+    setLoanItems([...loanItems, newLoanItem]);
     return newLoanItem;
   };
   

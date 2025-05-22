@@ -23,7 +23,6 @@ import {
   RotateCcw,
   FileText,
   Users,
-  Settings,
   Building,
   BarChart3,
   ArrowLeft
@@ -149,7 +148,6 @@ export function AppSidebar() {
           menuGroup.items ? (
             <SidebarGroup
               key={index}
-              defaultOpen={isGroupActive(menuGroup.items)}
             >
               <SidebarGroupLabel className={`${collapsed ? 'sr-only' : ''}`}>
                 {menuGroup.label}

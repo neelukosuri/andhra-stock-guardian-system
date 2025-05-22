@@ -2,405 +2,415 @@
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Download } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const DistrictReports: React.FC = () => {
+const DistrictReports = () => {
   const { 
-    items,
-    metrics,
-    districts,
-    districtStock,
+    items, 
+    metrics, 
     districtIssuanceVouchers,
+    districtLarVouchers,
     districtItemMovements,
-    districtLarVouchers
+    districtStock,
   } = useData();
   
-  const [activeTab, setActiveTab] = useState('inventory');
+  const [reportType, setReportType] = useState('stock');
+  const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
-  // For demo purposes, use first district
+  // In a real app, this would come from user context or props
   const districtId = 'district-1';
-  const district = districts.find(d => d.id === districtId);
-  const districtName = district?.name || 'Unknown District';
   
-  // Helper functions to get names from IDs
+  // Helper to get metric name
+  const getMetricName = (metricId: string) => {
+    const metric = metrics.find(m => m.id === metricId);
+    return metric ? metric.name : '';
+  };
+  
+  // Helper to get item name
   const getItemName = (itemId: string) => {
     const item = items.find(i => i.id === itemId);
     return item ? item.name : 'Unknown Item';
   };
   
-  const getItemCode = (itemId: string) => {
-    const item = items.find(i => i.id === itemId);
-    return item ? item.code : 'Unknown';
+  // Helper to format date
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
   };
-
-  const getMetricName = (metricId: string) => {
-    const metric = metrics.find(m => m.id === metricId);
-    return metric ? metric.name : 'Unit';
-  };
-
-  // Filter district stock for current district
-  const currentDistrictStock = districtStock.filter(stock => stock.districtId === districtId);
-
-  // Prepare inventory report data
-  const inventoryReport = currentDistrictStock.map(stock => {
-    const item = items.find(i => i.id === stock.itemId);
-    const metric = metrics.find(m => m.id === stock.metricId);
-    
-    return {
-      itemCode: item?.code || 'Unknown',
-      itemName: item?.name || 'Unknown',
-      quantity: stock.quantity,
-      metricName: metric?.name || 'Unit',
-      isReturnable: stock.isReturnable ? 'Yes (Ledger-I)' : 'No (Ledger-II)'
-    };
-  });
-
-  // Split inventory into returnable and non-returnable
-  const returnableItems = inventoryReport.filter(item => item.isReturnable === 'Yes (Ledger-I)');
-  const nonReturnableItems = inventoryReport.filter(item => item.isReturnable === 'No (Ledger-II)');
-
-  // Prepare issuance report data - internal office issuances
-  const issuanceReport = districtIssuanceVouchers
-    .filter(iv => {
-      // Filter by date if range is provided
-      if (dateRange?.from) {
-        const ivDate = new Date(iv.issueDate);
-        if (dateRange.from && dateRange.to) {
-          return ivDate >= dateRange.from && ivDate <= dateRange.to;
-        } else if (dateRange.from) {
-          return ivDate >= dateRange.from;
-        }
-      }
-      return true;
+  
+  // Filter district stock for this district
+  const districtStockData = districtStock
+    .filter(stock => stock.districtId === districtId)
+    .map(stock => {
+      const item = items.find(i => i.id === stock.itemId);
+      return {
+        ...stock,
+        itemName: item?.name || 'Unknown Item',
+        itemCode: item?.itemCode || 'N/A',
+        metricName: getMetricName(stock.metricId)
+      };
     })
+    .filter(stock => 
+      stock.itemName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  
+  // Separate returnable and consumable items
+  const returnableItems = districtStockData.filter(stock => stock.isReturnable);
+  const consumableItems = districtStockData.filter(stock => !stock.isReturnable);
+  
+  // Generate issuance report data for this district
+  const issuanceReportData = districtIssuanceVouchers
+    .filter(iv => iv.districtId === districtId)
     .map(iv => {
-      // Get movements for this IV
-      const movements = districtItemMovements.filter(m => m.districtIvId === iv.id);
-      
-      // Calculate totals
-      const itemCount = movements.length;
-      const totalQuantity = movements.reduce((sum, m) => sum + m.quantity, 0);
+      const movementsForIV = districtItemMovements.filter(m => m.districtIvId === iv.id);
+      const totalItems = movementsForIV.length;
       
       return {
-        ivNumber: iv.ivNumber,
-        issueDate: new Date(iv.issueDate).toLocaleDateString(),
-        receivingOffice: iv.receivingOfficeName,
-        itemCount,
-        totalQuantity
+        ...iv,
+        officeName: iv.receivingOfficeName,
+        totalItems,
+        issuedDate: new Date(iv.issueDate)
       };
-    });
-
-  // Prepare returns report data - internal office returns
-  const returnsReport = districtLarVouchers
-    .filter(lar => {
-      // Filter by date if range is provided
-      if (dateRange?.from) {
-        const larDate = new Date(lar.returnDate);
-        if (dateRange.from && dateRange.to) {
-          return larDate >= dateRange.from && larDate <= dateRange.to;
-        } else if (dateRange.from) {
-          return larDate >= dateRange.from;
-        }
+    })
+    .filter(iv => {
+      // Filter by search query
+      if (searchQuery && !iv.officeName.toLowerCase().includes(searchQuery.toLowerCase()) && 
+          !iv.ivNumber.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
       }
+      
+      // Filter by date range
+      if (dateRange?.from && dateRange?.to) {
+        return iv.issuedDate >= dateRange.from && iv.issuedDate <= dateRange.to;
+      } else if (dateRange?.from) {
+        return iv.issuedDate >= dateRange.from;
+      }
+      
       return true;
+    });
+  
+  // Generate return (LAR) report data for this district
+  const larReportData = districtLarVouchers
+    .filter(lar => {
+      // Find the related IV to check if it belongs to this district
+      const iv = districtIssuanceVouchers.find(i => i.id === lar.districtIvIdRef);
+      return iv && iv.districtId === districtId;
     })
     .map(lar => {
-      // Get the original IV
-      const originalIv = districtIssuanceVouchers.find(iv => iv.id === lar.districtIvIdRef);
-      
-      // Get movements for this LAR
-      const movements = districtItemMovements.filter(m => m.districtLarId === lar.id);
-      
-      // Calculate totals
-      const itemCount = movements.length;
-      const totalQuantity = movements.reduce((sum, m) => sum + m.quantity, 0);
+      const iv = districtIssuanceVouchers.find(i => i.id === lar.districtIvIdRef);
+      const movementsForLAR = districtItemMovements.filter(m => m.districtLarId === lar.id);
+      const totalItems = movementsForLAR.length;
       
       return {
-        larNumber: lar.larNumber,
-        returnDate: new Date(lar.returnDate).toLocaleDateString(),
-        originalIvNumber: originalIv?.ivNumber || 'Unknown',
-        receivingOffice: originalIv?.receivingOfficeName || 'Unknown',
-        itemCount,
-        totalQuantity
+        ...lar,
+        officeName: iv?.receivingOfficeName || 'Unknown Office',
+        ivNumber: iv?.ivNumber || 'Unknown',
+        totalItems,
+        returnedDate: new Date(lar.returnDate)
       };
+    })
+    .filter(lar => {
+      // Filter by search query
+      if (searchQuery && !lar.officeName.toLowerCase().includes(searchQuery.toLowerCase()) && 
+          !lar.larNumber.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      // Filter by date range
+      if (dateRange?.from && dateRange?.to) {
+        return lar.returnedDate >= dateRange.from && lar.returnedDate <= dateRange.to;
+      } else if (dateRange?.from) {
+        return lar.returnedDate >= dateRange.from;
+      }
+      
+      return true;
     });
-
-  // Prepare data for charts
-  const inventoryDistributionData = [
-    { name: 'Returnable', value: returnableItems.length, color: '#0369a1' },
-    { name: 'Non-Returnable', value: nonReturnableItems.length, color: '#06b6d4' }
-  ];
-
-  const topItemsChartData = inventoryReport
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 5)
-    .map(item => ({
-      name: item.itemName,
-      quantity: item.quantity
-    }));
-
+  
+  // Generate data for charts
+  const stockChartData = items
+    .filter(item => districtStockData.some(stock => stock.itemId === item.id))
+    .map(item => {
+      const stock = districtStockData.find(s => s.itemId === item.id);
+      return {
+        name: item.name,
+        quantity: stock?.quantity || 0,
+        type: stock?.isReturnable ? 'Returnable' : 'Consumable'
+      };
+    })
+    .slice(0, 10); // Limit to 10 items for better visualization
+  
+  // Office-wise issuance data for charts
+  const officeIssuanceData = issuanceReportData
+    .reduce((acc: {name: string, issuances: number, items: number}[], iv) => {
+      const existingOffice = acc.find(o => o.name === iv.receivingOfficeName);
+      
+      if (existingOffice) {
+        existingOffice.issuances += 1;
+        existingOffice.items += iv.totalItems;
+      } else {
+        acc.push({
+          name: iv.receivingOfficeName,
+          issuances: 1,
+          items: iv.totalItems
+        });
+      }
+      
+      return acc;
+    }, []);
+  
+  const handleDownload = () => {
+    // In a real application, this would generate and download a CSV/Excel file
+    alert("In a real application, this would download the report as a CSV/Excel file.");
+  };
+  
   return (
     <AppLayout>
-      <div className="flex flex-col gap-6">
-        <Card>
-          <CardHeader className="bg-apBlue-50">
-            <CardTitle className="text-apBlue-700">District Reports - {districtName}</CardTitle>
-            <CardDescription>
-              View district-specific reports and analytics
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-1 md:grid-cols-3 mb-6">
-                <TabsTrigger value="inventory">Inventory</TabsTrigger>
-                <TabsTrigger value="issuance">Issuance to Offices</TabsTrigger>
-                <TabsTrigger value="returns">Returns from Offices</TabsTrigger>
-              </TabsList>
-              
-              {/* Inventory Report */}
-              <TabsContent value="inventory">
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 border rounded-lg p-5">
-                      <h3 className="text-lg font-medium mb-4">District Inventory Overview</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item Code</TableHead>
-                            <TableHead>Item Name</TableHead>
-                            <TableHead>Quantity</TableHead>
-                            <TableHead>Classification</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {inventoryReport.length > 0 ? (
-                            inventoryReport.map((item, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{item.itemCode}</TableCell>
-                                <TableCell>{item.itemName}</TableCell>
-                                <TableCell>{item.quantity} {item.metricName}</TableCell>
-                                <TableCell>{item.isReturnable}</TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-center py-4">No inventory data available</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    
-                    <div className="lg:col-span-1 bg-slate-50 rounded-lg p-5">
-                      <h3 className="text-base font-medium mb-4">Inventory Distribution</h3>
-                      <div className="h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={inventoryDistributionData}
-                              dataKey="value"
-                              nameKey="name"
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={60}
-                              fill="#8884d8"
-                              label
-                            >
-                              {inventoryDistributionData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      
-                      <h3 className="text-base font-medium my-4">Top Items by Quantity</h3>
-                      <div className="h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={topItemsChartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="quantity" fill="#0284c7" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="border rounded-lg p-5">
-                      <h3 className="text-lg font-medium mb-4">Returnable Items (Ledger-I)</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item Name</TableHead>
-                            <TableHead>Quantity</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {returnableItems.length > 0 ? (
-                            returnableItems.map((item, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{item.itemName}</TableCell>
-                                <TableCell>{item.quantity} {item.metricName}</TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={2} className="text-center py-4">No returnable items</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    
-                    <div className="border rounded-lg p-5">
-                      <h3 className="text-lg font-medium mb-4">Non-Returnable Items (Ledger-II)</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item Name</TableHead>
-                            <TableHead>Quantity</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {nonReturnableItems.length > 0 ? (
-                            nonReturnableItems.map((item, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{item.itemName}</TableCell>
-                                <TableCell>{item.quantity} {item.metricName}</TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={2} className="text-center py-4">No non-returnable items</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <Button variant="outline">Export Inventory Report</Button>
-                  </div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">District Reports & Analytics</h1>
+        </div>
+        
+        <Tabs defaultValue="stock" onValueChange={setReportType}>
+          <TabsList className="grid grid-cols-3 w-full max-w-md mb-6">
+            <TabsTrigger value="stock">Inventory Report</TabsTrigger>
+            <TabsTrigger value="issuance">Issuance Report</TabsTrigger>
+            <TabsTrigger value="returns">Returns Report</TabsTrigger>
+          </TabsList>
+          
+          <div className="flex items-center gap-4 mb-4">
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-sm"
+            />
+            
+            {(reportType === 'issuance' || reportType === 'returns') && (
+              <DatePickerWithRange
+                value={dateRange}
+                onChange={setDateRange}
+              />
+            )}
+            
+            <Button variant="outline" onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              Export Report
+            </Button>
+          </div>
+          
+          <TabsContent value="stock" className="space-y-6">
+            <Card>
+              <CardHeader className="bg-apBlue-50">
+                <CardTitle className="text-apBlue-700">Current Inventory Levels</CardTitle>
+                <CardDescription>
+                  Complete inventory of all items in district stock
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={stockChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="quantity" fill="#3b82f6" name="Quantity" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              </TabsContent>
-              
-              {/* Issuance Report */}
-              <TabsContent value="issuance">
-                <div className="space-y-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <h3 className="text-lg font-medium">Issuance to Internal Offices</h3>
-                    <div className="w-full md:w-auto">
-                      <Label className="mb-2 block">Filter by date range</Label>
-                      <DatePickerWithRange value={dateRange} onChange={setDateRange} className="w-[300px]" />
-                    </div>
-                  </div>
-                  
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>IV Number</TableHead>
-                          <TableHead>Issue Date</TableHead>
-                          <TableHead>Receiving Office</TableHead>
-                          <TableHead>Items Count</TableHead>
-                          <TableHead>Total Quantity</TableHead>
+                
+                <div className="mb-4">
+                  <h3 className="text-lg font-medium mb-2">Ledger I (Returnable Items)</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item Name</TableHead>
+                        <TableHead>Item Code</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Unit</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {returnableItems.map((stock) => (
+                        <TableRow key={stock.id}>
+                          <TableCell>{stock.itemName}</TableCell>
+                          <TableCell>{stock.itemCode}</TableCell>
+                          <TableCell>{stock.quantity}</TableCell>
+                          <TableCell>{stock.metricName}</TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {issuanceReport.length > 0 ? (
-                          issuanceReport.map((iv, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{iv.ivNumber}</TableCell>
-                              <TableCell>{iv.issueDate}</TableCell>
-                              <TableCell>{iv.receivingOffice}</TableCell>
-                              <TableCell>{iv.itemCount}</TableCell>
-                              <TableCell>{iv.totalQuantity}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-4">No issuance data available</TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <Button variant="outline">Export Issuance Report</Button>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              {/* Returns Report */}
-              <TabsContent value="returns">
-                <div className="space-y-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <h3 className="text-lg font-medium">Returns from Internal Offices</h3>
-                    <div className="w-full md:w-auto">
-                      <Label className="mb-2 block">Filter by date range</Label>
-                      <DatePickerWithRange value={dateRange} onChange={setDateRange} className="w-[300px]" />
-                    </div>
-                  </div>
-                  
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
+                      ))}
+                      {returnableItems.length === 0 && (
                         <TableRow>
-                          <TableHead>LAR Number</TableHead>
-                          <TableHead>Return Date</TableHead>
-                          <TableHead>Original IV</TableHead>
-                          <TableHead>Office</TableHead>
-                          <TableHead>Items Count</TableHead>
-                          <TableHead>Total Quantity</TableHead>
+                          <TableCell colSpan={4} className="text-center py-4">
+                            No returnable items found
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {returnsReport.length > 0 ? (
-                          returnsReport.map((lar, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{lar.larNumber}</TableCell>
-                              <TableCell>{lar.returnDate}</TableCell>
-                              <TableCell>{lar.originalIvNumber}</TableCell>
-                              <TableCell>{lar.receivingOffice}</TableCell>
-                              <TableCell>{lar.itemCount}</TableCell>
-                              <TableCell>{lar.totalQuantity}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center py-4">No returns data available</TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <Button variant="outline">Export Returns Report</Button>
-                  </div>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Ledger II (Consumable Items)</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item Name</TableHead>
+                        <TableHead>Item Code</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Unit</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {consumableItems.map((stock) => (
+                        <TableRow key={stock.id}>
+                          <TableCell>{stock.itemName}</TableCell>
+                          <TableCell>{stock.itemCode}</TableCell>
+                          <TableCell>{stock.quantity}</TableCell>
+                          <TableCell>{stock.metricName}</TableCell>
+                        </TableRow>
+                      ))}
+                      {consumableItems.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-4">
+                            No consumable items found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="issuance" className="space-y-6">
+            <Card>
+              <CardHeader className="bg-apBlue-50">
+                <CardTitle className="text-apBlue-700">Internal Issuance Report</CardTitle>
+                <CardDescription>
+                  History of items issued from district stores to internal offices
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={officeIssuanceData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="issuances" fill="#3b82f6" name="Number of Issuances" />
+                      <Bar dataKey="items" fill="#10b981" name="Total Items Issued" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>IV Number</TableHead>
+                      <TableHead>Issue Date</TableHead>
+                      <TableHead>Office</TableHead>
+                      <TableHead>Receiving Staff</TableHead>
+                      <TableHead>Total Items</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {issuanceReportData.map((iv) => (
+                      <TableRow key={iv.id}>
+                        <TableCell>{iv.ivNumber}</TableCell>
+                        <TableCell>{formatDate(iv.issueDate)}</TableCell>
+                        <TableCell>{iv.officeName}</TableCell>
+                        <TableCell>{iv.receivingStaffGNo}</TableCell>
+                        <TableCell>{iv.totalItems}</TableCell>
+                      </TableRow>
+                    ))}
+                    {issuanceReportData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-4">
+                          No issuance data found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="returns" className="space-y-6">
+            <Card>
+              <CardHeader className="bg-apBlue-50">
+                <CardTitle className="text-apBlue-700">Internal Returns Report (LAR)</CardTitle>
+                <CardDescription>
+                  History of items returned from internal offices to district stores
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>LAR Number</TableHead>
+                      <TableHead>Return Date</TableHead>
+                      <TableHead>Original IV</TableHead>
+                      <TableHead>Office</TableHead>
+                      <TableHead>Total Items</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {larReportData.map((lar) => (
+                      <TableRow key={lar.id}>
+                        <TableCell>{lar.larNumber}</TableCell>
+                        <TableCell>{formatDate(lar.returnDate)}</TableCell>
+                        <TableCell>{lar.ivNumber}</TableCell>
+                        <TableCell>{lar.officeName}</TableCell>
+                        <TableCell>{lar.totalItems}</TableCell>
+                      </TableRow>
+                    ))}
+                    {larReportData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-4">
+                          No returns data found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );

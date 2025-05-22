@@ -6,12 +6,9 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -21,56 +18,75 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { SearchIcon, ArrowLeft, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
 
-const LoanItemsReturn = () => {
-  const {
-    loanItems,
-    updateLoanItem,
-    getItemById,
-    getMetricById
-  } = useData();
-  
+const LoanItemsReturn: React.FC = () => {
+  const { loanItems, items, updateLoanItem } = useData();
   const { toast } = useToast();
   
-  // State for loan item return form
+  const [selectedLoanItemId, setSelectedLoanItemId] = useState<string>('');
   const [returnDetails, setReturnDetails] = useState({
     returnedTo: '',
     returnNotes: ''
   });
+  const [filteredLoanItems, setFilteredLoanItems] = useState(loanItems);
   
-  // State for filtering and tracking active loan items
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeLoanItems, setActiveLoanItems] = useState<any[]>([]);
-  
-  // Update filtered items when loanItems changes
+  // Filter to show only loaned items (not yet returned)
   useEffect(() => {
-    const filtered = loanItems.filter(loanItem => {
-      // Only show active loan items (not returned)
-      if (loanItem.status !== 'Loaned') return false;
-      
-      const item = getItemById(loanItem.itemId);
-      if (!item) return false;
-      
-      return (
-        searchTerm === '' ||
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loanItem.sourceWing.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    });
-    
-    setActiveLoanItems(filtered);
-  }, [loanItems, searchTerm, getItemById]);
+    setFilteredLoanItems(loanItems.filter(item => item.status === 'Loaned'));
+  }, [loanItems]);
   
-  // Handler for marking loan item as returned
-  const handleMarkAsReturned = (id: string) => {
+  const handleReturnDetailsChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setReturnDetails(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  const handleSelectLoanItem = (id: string) => {
+    setSelectedLoanItemId(id);
+    setReturnDetails({
+      returnedTo: '',
+      returnNotes: ''
+    });
+  };
+  
+  const getItemName = (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    return item ? item.name : 'Unknown Item';
+  };
+  
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
+  };
+  
+  const handleLoanItemReturn = () => {
+    if (!selectedLoanItemId) {
+      toast({
+        title: "No item selected",
+        description: "Please select a loan item to return",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (!returnDetails.returnedTo.trim()) {
       toast({
-        title: "Validation Error",
-        description: "Please enter who the item was returned to.",
+        title: "Missing information",
+        description: "Please enter who the item was returned to",
         variant: "destructive"
       });
       return;
@@ -84,217 +100,165 @@ const LoanItemsReturn = () => {
         returnNotes: returnDetails.returnNotes
       };
       
-      const updatedLoanItem = updateLoanItem(id, returnData);
-      const item = getItemById(updatedLoanItem?.itemId || '');
+      updateLoanItem(selectedLoanItemId, returnData);
       
       toast({
-        title: "Success",
-        description: `${item?.name} marked as returned to ${returnDetails.returnedTo}.`,
+        title: "Item returned successfully",
+        description: "The loan item has been marked as returned"
       });
       
-      // Reset return details
+      // Reset the form
+      setSelectedLoanItemId('');
       setReturnDetails({
         returnedTo: '',
         returnNotes: ''
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update loan item status. Please try again.",
+        title: "Error returning item",
+        description: "An error occurred while processing the return",
         variant: "destructive"
       });
+      console.error(error);
     }
   };
   
   return (
     <AppLayout>
-      <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-semibold">Loan Item Returns</h1>
-          <p className="text-apGray-600 mt-1">Process returns for items received on loan from other departments or agencies.</p>
-        </div>
-        
-        {/* Return Details Form */}
-        <Card className="ap-card">
-          <CardHeader>
-            <CardTitle>Return Details</CardTitle>
-            <CardDescription>Enter information about who is receiving the returned items.</CardDescription>
+      <div className="flex flex-col gap-8">
+        <Card>
+          <CardHeader className="bg-apBlue-50">
+            <CardTitle className="text-apBlue-700">Loan Items Return</CardTitle>
+            <CardDescription>Process returns of items that were received on loan</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label htmlFor="returnedTo" className="block text-sm font-medium text-gray-700">Returned To *</label>
-                <Input 
-                  id="returnedTo" 
-                  placeholder="Enter person or department receiving the return" 
-                  value={returnDetails.returnedTo}
-                  onChange={e => setReturnDetails({...returnDetails, returnedTo: e.target.value})}
-                  className="ap-input"
-                />
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Select Item to Return</label>
+                  <Select value={selectedLoanItemId} onValueChange={handleSelectLoanItem}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a loan item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredLoanItems.map((loanItem) => (
+                        <SelectItem key={loanItem.id} value={loanItem.id}>
+                          {getItemName(loanItem.itemId)} - {loanItem.sourceWing} - {formatDate(loanItem.expectedReturnDate)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {selectedLoanItemId && (
+                  <div className="space-y-4 border p-4 rounded-lg">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Returned To</label>
+                      <Input
+                        name="returnedTo"
+                        value={returnDetails.returnedTo}
+                        onChange={handleReturnDetailsChange}
+                        placeholder="Enter the name of the person/department"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Return Notes</label>
+                      <Textarea
+                        name="returnNotes"
+                        value={returnDetails.returnNotes}
+                        onChange={handleReturnDetailsChange}
+                        placeholder="Any additional notes about the return"
+                        rows={3}
+                      />
+                    </div>
+                    
+                    <Button onClick={handleLoanItemReturn}>Process Return</Button>
+                  </div>
+                )}
               </div>
               
-              <div className="space-y-2">
-                <label htmlFor="returnNotes" className="block text-sm font-medium text-gray-700">Return Notes</label>
-                <Input 
-                  id="returnNotes" 
-                  placeholder="Any additional notes about the return" 
-                  value={returnDetails.returnNotes}
-                  onChange={e => setReturnDetails({...returnDetails, returnNotes: e.target.value})}
-                  className="ap-input"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Loan Items Table */}
-        <Card className="ap-card">
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <CardTitle>Active Loan Items</CardTitle>
-                <CardDescription>Items currently on loan that can be returned.</CardDescription>
-              </div>
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input
-                  className="pl-9 ap-input w-full md:w-64"
-                  placeholder="Search loan items..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableCaption>List of active loan items that can be returned.</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Source Wing</TableHead>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Loan Date</TableHead>
-                  <TableHead>Expected Return</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeLoanItems.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4 text-gray-500">
-                      {searchTerm ? 'No active loan items matching your search.' : 'No active loan items found.'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  activeLoanItems.map(loanItem => {
-                    const item = getItemById(loanItem.itemId);
-                    const metric = getMetricById(loanItem.metricId);
-                    const isOverdue = new Date(loanItem.expectedReturnDate) < new Date();
-                    
-                    return (
-                      <TableRow key={loanItem.id} className={isOverdue ? "bg-red-50" : ""}>
-                        <TableCell>
-                          {item ? (
-                            <div>
-                              <div className="font-medium">{item.name}</div>
-                              <div className="text-sm text-gray-500">{item.code}</div>
-                            </div>
-                          ) : 'Unknown Item'}
-                        </TableCell>
-                        <TableCell>
-                          {loanItem.quantity} {metric?.name || ''}
-                        </TableCell>
-                        <TableCell>{loanItem.sourceWing}</TableCell>
-                        <TableCell>{loanItem.eventName || '-'}</TableCell>
-                        <TableCell>
-                          {loanItem.created_at ? 
-                            new Date(loanItem.created_at).toLocaleDateString() : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            {isOverdue && <span className="text-red-500 mr-1">●</span>}
-                            {loanItem.expectedReturnDate ? 
-                              new Date(loanItem.expectedReturnDate).toLocaleDateString() : '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            className="h-9 text-green-600 hover:text-green-700 hover:bg-green-50"
-                            onClick={() => handleMarkAsReturned(loanItem.id)}
-                            disabled={!returnDetails.returnedTo}
-                          >
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Mark Returned
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        
-        {/* Returned Items History */}
-        <Card className="ap-card">
-          <CardHeader>
-            <CardTitle>Return History</CardTitle>
-            <CardDescription>History of all items that have been returned.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableCaption>Complete history of loan item returns.</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Source Wing</TableHead>
-                  <TableHead>Returned To</TableHead>
-                  <TableHead>Return Date</TableHead>
-                  <TableHead>Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loanItems.filter(item => item.status === 'Returned').length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4 text-gray-500">
-                      No loan items have been returned yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  loanItems
-                    .filter(item => item.status === 'Returned')
-                    .map(loanItem => {
-                      const item = getItemById(loanItem.itemId);
-                      const metric = getMetricById(loanItem.metricId);
+                {selectedLoanItemId && (
+                  <div className="border p-4 rounded-lg">
+                    <h3 className="font-medium mb-2">Item Details</h3>
+                    {(() => {
+                      const loanItem = loanItems.find(item => item.id === selectedLoanItemId);
+                      if (!loanItem) return <p>Item not found</p>;
+                      
+                      const itemDetails = items.find(i => i.id === loanItem.itemId);
                       
                       return (
-                        <TableRow key={loanItem.id}>
-                          <TableCell>
-                            {item ? (
-                              <div>
-                                <div className="font-medium">{item.name}</div>
-                                <div className="text-sm text-gray-500">{item.code}</div>
-                              </div>
-                            ) : 'Unknown Item'}
-                          </TableCell>
-                          <TableCell>
-                            {loanItem.quantity} {metric?.name || ''}
-                          </TableCell>
-                          <TableCell>{loanItem.sourceWing}</TableCell>
-                          <TableCell>{loanItem.returnedTo || '-'}</TableCell>
-                          <TableCell>
-                            {loanItem.actualReturnDate ? 
-                              new Date(loanItem.actualReturnDate).toLocaleDateString() : '-'}
-                          </TableCell>
-                          <TableCell>{loanItem.returnNotes || '-'}</TableCell>
-                        </TableRow>
+                        <dl className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <dt className="font-medium">Item Name:</dt>
+                            <dd>{itemDetails?.name || 'Unknown'}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="font-medium">Quantity:</dt>
+                            <dd>{loanItem.quantity}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="font-medium">Source:</dt>
+                            <dd>{loanItem.sourceWing}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="font-medium">Event:</dt>
+                            <dd>{loanItem.eventName}</dd>
+                          </div>
+                          <div className="flex justify-between">
+                            <dt className="font-medium">Expected Return:</dt>
+                            <dd>{formatDate(loanItem.expectedReturnDate)}</dd>
+                          </div>
+                        </dl>
                       );
-                    })
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="bg-apBlue-50">
+            <CardTitle className="text-apBlue-700">Loan Returns History</CardTitle>
+            <CardDescription>View history of all loan item returns</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item Name</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Expected Return</TableHead>
+                  <TableHead>Actual Return</TableHead>
+                  <TableHead>Returned To</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loanItems.length > 0 ? (
+                  loanItems.map((loanItem) => (
+                    <TableRow key={loanItem.id}>
+                      <TableCell>{getItemName(loanItem.itemId)}</TableCell>
+                      <TableCell>{loanItem.sourceWing}</TableCell>
+                      <TableCell>{loanItem.eventName}</TableCell>
+                      <TableCell>{formatDate(loanItem.expectedReturnDate)}</TableCell>
+                      <TableCell>{formatDate(loanItem.actualReturnDate)}</TableCell>
+                      <TableCell>{loanItem.returnedTo || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant={loanItem.status === 'Returned' ? 'success' : 'default'}>
+                          {loanItem.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center">No loan items found</TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
