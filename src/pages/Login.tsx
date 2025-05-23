@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Lock, LogIn, Shield } from 'lucide-react';
+import { useData } from '@/contexts/DataContext';
 
 const formSchema = z.object({
   username: z.string().min(3, {
@@ -20,9 +20,18 @@ const formSchema = z.object({
   }),
 });
 
-const Login = () => {
-  const navigate = useNavigate();
+interface LoginProps {
+  onLogin: (user: {
+    id: string;
+    username: string;
+    role: 'HQ_ADMIN' | 'DISTRICT_ADMIN';
+    districtId?: string;
+  }) => void;
+}
+
+const Login = ({ onLogin }: LoginProps) => {
   const { toast } = useToast();
+  const { users, districts } = useData();
   const [isLoading, setIsLoading] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -36,17 +45,34 @@ const Login = () => {
   function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     
-    // In a real app, this would be an API call to authenticate
+    // Check for existing user in our mock data
+    const user = users.find(
+      u => u.username === values.username && u.password === values.password && u.isActive
+    );
+
     setTimeout(() => {
       setIsLoading(false);
       
-      // For demo purposes, just accept any valid form input
-      toast({
-        title: "Login successful",
-        description: "Welcome to AP Police Communications System",
-      });
-      
-      navigate('/dashboard');
+      if (user) {
+        toast({
+          title: "Login successful",
+          description: `Welcome, ${user.username}!`,
+        });
+        
+        // Pass authenticated user data to the parent component
+        onLogin({
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          districtId: user.districtId
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: "Invalid username or password.",
+          variant: "destructive",
+        });
+      }
     }, 1000);
   }
 

@@ -6,8 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DistrictStockWithDetails } from '@/types';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { FileWarning } from 'lucide-react';
 
-const DistrictInventory: React.FC = () => {
+interface DistrictInventoryProps {
+  user?: {
+    id: string;
+    username: string;
+    role: 'HQ_ADMIN' | 'DISTRICT_ADMIN';
+    districtId?: string;
+  };
+}
+
+const DistrictInventory: React.FC<DistrictInventoryProps> = ({ user }) => {
   const { 
     districts, 
     districtStock, 
@@ -24,11 +35,18 @@ const DistrictInventory: React.FC = () => {
     returnables: [],
     consumables: []
   });
+  const [districtName, setDistrictName] = useState<string>("");
 
-  // For demo purposes, we'll assume the first district is the current user's district
-  const currentDistrictId = districts[0]?.id || '';
+  // Determine which district's inventory to show
+  const currentDistrictId = user?.districtId || districts[0]?.id || '';
 
   useEffect(() => {
+    // Get district name
+    const district = districts.find(d => d.id === currentDistrictId);
+    if (district) {
+      setDistrictName(district.name);
+    }
+    
     // Filter stock for current district and categorize
     const districtItems = districtStock.filter(
       stock => stock.districtId === currentDistrictId
@@ -59,12 +77,27 @@ const DistrictInventory: React.FC = () => {
     <AppLayout>
       <Card className="w-full">
         <CardHeader className="bg-apBlue-50">
-          <CardTitle className="text-apBlue-700">District Inventory</CardTitle>
+          <CardTitle className="text-apBlue-700">
+            {districtName ? `${districtName} Inventory` : 'District Inventory'}
+          </CardTitle>
           <CardDescription>
-            View and manage items in your district's inventory
+            {user?.role === 'DISTRICT_ADMIN' 
+              ? 'View and manage items in your district\'s inventory'
+              : 'View inventory for selected district'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
+          {!districtName && (
+            <Alert className="mb-6">
+              <FileWarning className="h-4 w-4" />
+              <AlertTitle>No district selected</AlertTitle>
+              <AlertDescription>
+                Please select a district to view its inventory.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Tabs defaultValue="ledger-i" className="w-full">
             <TabsList className="w-full mb-6">
               <TabsTrigger value="ledger-i" className="flex-1">Ledger-I (Returnables)</TabsTrigger>
