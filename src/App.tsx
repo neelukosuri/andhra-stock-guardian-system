@@ -1,10 +1,10 @@
-
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { DataProvider } from '@/contexts/DataContext';
 
 // Import all pages
+import Login from '@/pages/Login';
 import Index from '@/pages/Index';
 import ItemMaster from '@/pages/ItemMaster';
 import StockManagement from '@/pages/StockManagement';
@@ -27,7 +27,13 @@ function App() {
       <DataProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            {/* Login as the landing page */}
+            <Route path="/" element={<Login />} />
+            
+            {/* Dashboard becomes a separate route */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            
+            {/* Keep all existing routes */}
             <Route path="/item-master" element={<ItemMaster />} />
             <Route path="/stock-management" element={<StockManagement />} />
             <Route path="/loan-items" element={<LoanItems />} />
