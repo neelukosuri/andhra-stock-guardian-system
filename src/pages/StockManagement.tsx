@@ -47,9 +47,15 @@ const StockManagement = () => {
   
   const { toast } = useToast();
   
+  // Find the "Nos" metric ID or use the first metric as fallback
+  const nosMetricId = React.useMemo(() => {
+    const nosMetric = metrics.find(m => m.name.toLowerCase() === 'nos');
+    return nosMetric?.id || (metrics.length > 0 ? metrics[0].id : '');
+  }, [metrics]);
+  
   // State for new stock entry form
   const [newStock, setNewStock] = useState({
-    itemId: '',
+    itemCode: '',
     quantity: '',
     metricId: '',
     lowStockThreshold: ''
@@ -57,7 +63,7 @@ const StockManagement = () => {
   
   // State for new procurement form
   const [newProcurement, setNewProcurement] = useState({
-    itemId: '',
+    itemCode: '',
     quantity: '',
     metricId: '',
     invoiceNumber: '',
@@ -68,6 +74,14 @@ const StockManagement = () => {
     warrantyPeriodTill: '',
     sellerAddress: ''
   });
+  
+  // Set default metric ID when metrics are loaded
+  useEffect(() => {
+    if (nosMetricId) {
+      setNewStock(prev => ({ ...prev, metricId: nosMetricId }));
+      setNewProcurement(prev => ({ ...prev, metricId: nosMetricId }));
+    }
+  }, [nosMetricId]);
   
   // State for search/filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -88,15 +102,31 @@ const StockManagement = () => {
     setFilteredStock(filtered);
   }, [hqStock, searchTerm, getItemById]);
   
+  // Find item by code
+  const getItemByCode = (code) => {
+    return items.find(item => item.code.toLowerCase() === code.toLowerCase());
+  };
+  
   // Handler for adding existing stock
   const handleAddExistingStock = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
-    if (!newStock.itemId) {
+    if (!newStock.itemCode) {
       toast({
         title: "Validation Error",
-        description: "Please select an item.",
+        description: "Please enter an item code.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Find the item by code
+    const item = getItemByCode(newStock.itemCode);
+    if (!item) {
+      toast({
+        title: "Validation Error",
+        description: "Item with this code not found.",
         variant: "destructive"
       });
       return;
@@ -122,7 +152,7 @@ const StockManagement = () => {
     
     try {
       // Check if stock already exists for this item
-      const existingStock = hqStock.find(stock => stock.itemId === newStock.itemId);
+      const existingStock = hqStock.find(stock => stock.itemId === item.id);
       
       if (existingStock) {
         // If exists, update quantity
@@ -135,8 +165,6 @@ const StockManagement = () => {
         
         // Use updateHQStock function (not shown in context but should exist)
         // For demo, we'll just show a success toast
-        const item = getItemById(existingStock.itemId);
-        
         toast({
           title: "Success",
           description: `Stock updated for ${item?.name}. New quantity: ${updatedStock.quantity}`,
@@ -144,13 +172,11 @@ const StockManagement = () => {
       } else {
         // If new stock entry, add it
         const stock = addHQStock({
-          itemId: newStock.itemId,
+          itemId: item.id,
           quantity: parseInt(newStock.quantity),
           metricId: newStock.metricId,
           lowStockThreshold: newStock.lowStockThreshold ? parseInt(newStock.lowStockThreshold) : undefined
         });
-        
-        const item = getItemById(stock.itemId);
         
         toast({
           title: "Success",
@@ -160,9 +186,9 @@ const StockManagement = () => {
       
       // Reset form
       setNewStock({
-        itemId: '',
+        itemCode: '',
         quantity: '',
-        metricId: '',
+        metricId: nosMetricId,
         lowStockThreshold: ''
       });
     } catch (error) {
@@ -179,10 +205,39 @@ const StockManagement = () => {
     e.preventDefault();
     
     // Basic validation
-    if (!newProcurement.itemId || !newProcurement.quantity || !newProcurement.metricId) {
+    if (!newProcurement.itemCode) {
       toast({
         title: "Validation Error",
-        description: "Item, quantity, and metric are required.",
+        description: "Please enter an item code.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Find the item by code
+    const item = getItemByCode(newProcurement.itemCode);
+    if (!item) {
+      toast({
+        title: "Validation Error",
+        description: "Item with this code not found.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!newProcurement.quantity || parseInt(newProcurement.quantity) <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Quantity must be a positive number.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!newProcurement.metricId) {
+      toast({
+        title: "Validation Error",
+        description: "Metric is required.",
         variant: "destructive"
       });
       return;
@@ -209,7 +264,7 @@ const StockManagement = () => {
     try {
       // In a real app, we would use a createProcurement function
       // For demo, we'll just update the stock like in handleAddExistingStock
-      const existingStock = hqStock.find(stock => stock.itemId === newProcurement.itemId);
+      const existingStock = hqStock.find(stock => stock.itemId === item.id);
       
       if (existingStock) {
         // If exists, update quantity
@@ -218,8 +273,6 @@ const StockManagement = () => {
           quantity: existingStock.quantity + parseInt(newProcurement.quantity)
         };
         
-        const item = getItemById(existingStock.itemId);
-        
         toast({
           title: "Success",
           description: `Procurement recorded for ${item?.name}. New quantity: ${updatedStock.quantity}`,
@@ -227,12 +280,10 @@ const StockManagement = () => {
       } else {
         // If new stock entry, add it
         const stock = addHQStock({
-          itemId: newProcurement.itemId,
+          itemId: item.id,
           quantity: parseInt(newProcurement.quantity),
           metricId: newProcurement.metricId
         });
-        
-        const item = getItemById(stock.itemId);
         
         toast({
           title: "Success",
@@ -242,9 +293,9 @@ const StockManagement = () => {
       
       // Reset form
       setNewProcurement({
-        itemId: '',
+        itemCode: '',
         quantity: '',
-        metricId: '',
+        metricId: nosMetricId,
         invoiceNumber: '',
         purchaseDate: '',
         budgetId: '',
@@ -287,25 +338,14 @@ const StockManagement = () => {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <label htmlFor="item" className="block text-sm font-medium text-gray-700">Item *</label>
-                      <Select 
-                        value={newStock.itemId} 
-                        onValueChange={value => setNewStock({...newStock, itemId: value})}
-                      >
-                        <SelectTrigger className="ap-input">
-                          <SelectValue placeholder="Select item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectLabel>Available Items</SelectLabel>
-                            {items.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.code} - {item.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
+                      <label htmlFor="itemCode" className="block text-sm font-medium text-gray-700">Item Code *</label>
+                      <Input 
+                        id="itemCode" 
+                        placeholder="Enter item code" 
+                        value={newStock.itemCode}
+                        onChange={e => setNewStock({...newStock, itemCode: e.target.value})}
+                        className="ap-input"
+                      />
                     </div>
                     
                     <div className="space-y-2">
@@ -386,25 +426,14 @@ const StockManagement = () => {
                     <h3 className="text-lg font-medium mb-4">Item Details</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <label htmlFor="procItem" className="block text-sm font-medium text-gray-700">Item *</label>
-                        <Select 
-                          value={newProcurement.itemId} 
-                          onValueChange={value => setNewProcurement({...newProcurement, itemId: value})}
-                        >
-                          <SelectTrigger className="ap-input">
-                            <SelectValue placeholder="Select item" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel>Available Items</SelectLabel>
-                              {items.map((item) => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.code} - {item.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
+                        <label htmlFor="procItemCode" className="block text-sm font-medium text-gray-700">Item Code *</label>
+                        <Input 
+                          id="procItemCode" 
+                          placeholder="Enter item code" 
+                          value={newProcurement.itemCode}
+                          onChange={e => setNewProcurement({...newProcurement, itemCode: e.target.value})}
+                          className="ap-input"
+                        />
                       </div>
                       
                       <div className="space-y-2">
