@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
@@ -17,6 +18,7 @@ import LarFromOffices from '@/pages/LarFromOffices';
 import DistrictInventory from '@/pages/DistrictInventory';
 import DistrictReports from '@/pages/DistrictReports';
 import Reports from '@/pages/Reports';
+import Alerts from '@/pages/Alerts';
 import UserManagement from '@/pages/UserManagement';
 import Dashboard from '@/pages/Dashboard';
 import NotFound from '@/pages/NotFound';
@@ -45,6 +47,7 @@ function App() {
             <Route path="/district-inventory" element={<DistrictInventory />} />
             <Route path="/district-reports" element={<DistrictReports />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/alerts" element={<Alerts />} />
             <Route path="/user-management" element={<UserManagement />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
