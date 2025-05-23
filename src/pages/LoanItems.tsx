@@ -92,8 +92,8 @@ const LoanItems = () => {
       setForm({
         quantity: 1,
         expectedReturnDate: new Date(),
-        itemId: items[0].id,
-        metricId: metrics[0].id,
+        itemId: items[0]?.id || 'default-item',
+        metricId: metrics[0]?.id || 'default-metric',
         sourceWing: '',
         eventName: '',
       });
@@ -128,6 +128,10 @@ const LoanItems = () => {
       loan.eventName.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
+  // Make sure we're not working with empty arrays
+  const safeItems = items.length > 0 ? items : [{ id: 'default-item', name: 'Default Item' }];
+  const safeMetrics = metrics.length > 0 ? metrics : [{ id: 'default-metric', name: 'Default Metric' }];
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -149,12 +153,12 @@ const LoanItems = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="itemId">Item</Label>
-                <Select value={form.itemId} onValueChange={(value) => setForm(prev => ({ ...prev, itemId: value }))}>
+                <Select value={form.itemId || safeItems[0].id} onValueChange={(value) => setForm(prev => ({ ...prev, itemId: value }))}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Item" />
                   </SelectTrigger>
                   <SelectContent>
-                    {items.map(item => (
+                    {safeItems.map(item => (
                       <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -163,12 +167,12 @@ const LoanItems = () => {
 
               <div>
                 <Label htmlFor="metricId">Unit</Label>
-                <Select value={form.metricId} onValueChange={(value) => setForm(prev => ({ ...prev, metricId: value }))}>
+                <Select value={form.metricId || safeMetrics[0].id} onValueChange={(value) => setForm(prev => ({ ...prev, metricId: value }))}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    {metrics.map(metric => (
+                    {safeMetrics.map(metric => (
                       <SelectItem key={metric.id} value={metric.id}>{metric.name}</SelectItem>
                     ))}
                   </SelectContent>
