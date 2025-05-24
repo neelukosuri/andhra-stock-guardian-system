@@ -22,6 +22,7 @@ import Reports from '@/pages/Reports';
 import Alerts from '@/pages/Alerts';
 import UserManagement from '@/pages/UserManagement';
 import Dashboard from '@/pages/Dashboard';
+import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 
 // Auth type for session management
@@ -113,6 +114,9 @@ function App() {
             } />
             <Route path="/user-management" element={
               authUser?.role === 'HQ_ADMIN' ? <UserManagement /> : <Navigate to="/" replace />
+            } />
+            <Route path="/settings" element={
+              authUser ? <Settings user={authUser} onLogout={handleLogout} /> : <Navigate to="/" replace />
             } />
             <Route path="*" element={<NotFound />} />
           </Routes>
