@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, User, Bell, Database, Security, Palette } from 'lucide-react';
+import { Shield, User, Bell, Database, Lock, Palette } from 'lucide-react';
 
 interface SettingsProps {
   user?: { id: string; username: string; role: string };
@@ -91,7 +90,7 @@ const Settings = ({ user, onLogout }: SettingsProps) => {
               <span>System</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="flex items-center space-x-2">
-              <Security className="h-4 w-4" />
+              <Lock className="h-4 w-4" />
               <span>Security</span>
             </TabsTrigger>
           </TabsList>
