@@ -2,6 +2,7 @@
 import React from 'react';
 import { AppHeader } from './AppHeader';
 import { AppSidebar } from './AppSidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -10,15 +11,17 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children, onLogout }: AppLayoutProps) => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader onLogout={onLogout} />
-      <div className="flex">
+    <SidebarProvider>
+      <div className="min-h-screen w-full flex">
         <AppSidebar />
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
-          {children}
-        </main>
+        <SidebarInset>
+          <AppHeader onLogout={onLogout} />
+          <main className="flex-1 p-4 md:p-6 lg:p-8">
+            {children}
+          </main>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
