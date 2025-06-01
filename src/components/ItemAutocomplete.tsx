@@ -1,16 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useData } from '@/contexts/DataContext';
+import { useApi } from '@/hooks/useApi';
 import { SearchIcon, Loader } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 interface ItemAutocompleteProps {
   onItemSelect: (item: { id: string; name: string; code: string }) => void;
@@ -26,8 +20,8 @@ const ItemAutocomplete: React.FC<ItemAutocompleteProps> = ({
   className = ""
 }) => {
   const { items } = useData();
+  const { get, isLoading } = useApi();
   const [searchTerm, setSearchTerm] = useState(value);
-  const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; code: string }>>([]);
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,28 +30,34 @@ const ItemAutocomplete: React.FC<ItemAutocompleteProps> = ({
   
   // Search items based on debounced search term
   useEffect(() => {
-    if (debouncedSearchTerm.trim().length > 0) {
-      setIsLoading(true);
-      
-      // Simulate API call delay
-      setTimeout(() => {
-        const filteredItems = items
-          .filter(item => 
-            item.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-            item.code.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-          )
-          .slice(0, 10); // Limit to 10 results
-          
-        setSuggestions(filteredItems);
-        setIsLoading(false);
-        setIsOpen(filteredItems.length > 0);
-      }, 100);
-    } else {
-      setSuggestions([]);
-      setIsOpen(false);
-      setIsLoading(false);
-    }
-  }, [debouncedSearchTerm, items]);
+    const searchItems = async () => {
+      if (debouncedSearchTerm.trim().length > 0) {
+        try {
+          // Try to fetch from API first, fallback to local data
+          const apiResults = await get(`/items/search?q=${encodeURIComponent(debouncedSearchTerm)}&limit=10`);
+          setSuggestions(apiResults);
+          setIsOpen(apiResults.length > 0);
+        } catch (error) {
+          // Fallback to local search if API fails
+          console.log('API search failed, using local data');
+          const filteredItems = items
+            .filter(item => 
+              item.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+              item.code.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+            )
+            .slice(0, 10);
+            
+          setSuggestions(filteredItems);
+          setIsOpen(filteredItems.length > 0);
+        }
+      } else {
+        setSuggestions([]);
+        setIsOpen(false);
+      }
+    };
+
+    searchItems();
+  }, [debouncedSearchTerm, items, get]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
