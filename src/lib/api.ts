@@ -1,7 +1,13 @@
+
 // API configuration and CORS handling
 import { mockSearchEndpoint, simulateApiError } from './mockApiServer';
+import { validateSearchQuery, sanitizeInput, createRateLimiter } from './validation';
+import { NetworkError, RateLimitError, ValidationError, NotFoundError } from './errorTypes';
 
 const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:3000/api';
+
+// Rate limiter for search requests (max 10 requests per minute)
+const searchRateLimiter = createRateLimiter(10, 60000);
 
 // CORS configuration for API requests
 const corsHeaders = {
@@ -16,15 +22,22 @@ const corsHeaders = {
 export const apiClient = {
   async get(endpoint: string) {
     try {
-      // Handle mock search endpoint
+      // Handle mock search endpoint with validation
       if (endpoint.startsWith('/items/search')) {
+        // Apply rate limiting for search requests
+        searchRateLimiter();
+        
         const url = new URL(endpoint, 'http://localhost');
         const query = url.searchParams.get('q') || '';
         const limit = parseInt(url.searchParams.get('limit') || '10');
         
-        console.log(`[API Client] Mock search request: query="${query}", limit=${limit}`);
+        // Validate and sanitize input
+        const sanitizedQuery = sanitizeInput(query);
+        validateSearchQuery(sanitizedQuery, limit);
         
-        const response = await mockSearchEndpoint(query, limit);
+        console.log(`[API Client] Mock search request: query="${sanitizedQuery}", limit=${limit}`);
+        
+        const response = await mockSearchEndpoint(sanitizedQuery, limit);
         return response.items; // Return items array for compatibility
       }
       
@@ -36,12 +49,31 @@ export const apiClient = {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 404) {
+          throw new NotFoundError(`Resource not found: ${endpoint}`);
+        }
+        if (response.status === 429) {
+          throw new RateLimitError();
+        }
+        throw new NetworkError(`HTTP error! status: ${response.status}`, response.status);
       }
       
       return await response.json();
     } catch (error) {
       console.error('API GET error:', error);
+      
+      // Re-throw custom errors
+      if (error instanceof ValidationError || 
+          error instanceof RateLimitError || 
+          error instanceof NotFoundError) {
+        throw error;
+      }
+      
+      // Convert network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new NetworkError('Network connection failed. Please check your internet connection.');
+      }
+      
       throw error;
     }
   },
@@ -56,7 +88,13 @@ export const apiClient = {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 400) {
+          throw new ValidationError('Invalid data provided');
+        }
+        if (response.status === 429) {
+          throw new RateLimitError();
+        }
+        throw new NetworkError(`HTTP error! status: ${response.status}`, response.status);
       }
       
       return await response.json();
@@ -76,7 +114,16 @@ export const apiClient = {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 400) {
+          throw new ValidationError('Invalid data provided');
+        }
+        if (response.status === 404) {
+          throw new NotFoundError();
+        }
+        if (response.status === 429) {
+          throw new RateLimitError();
+        }
+        throw new NetworkError(`HTTP error! status: ${response.status}`, response.status);
       }
       
       return await response.json();
@@ -95,7 +142,13 @@ export const apiClient = {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 404) {
+          throw new NotFoundError();
+        }
+        if (response.status === 429) {
+          throw new RateLimitError();
+        }
+        throw new NetworkError(`HTTP error! status: ${response.status}`, response.status);
       }
       
       return await response.json();
@@ -108,6 +161,22 @@ export const apiClient = {
 
 // Helper function to handle API errors
 export const handleApiError = (error: any) => {
+  if (error instanceof ValidationError) {
+    return `Validation error: ${error.message}`;
+  }
+  
+  if (error instanceof NetworkError) {
+    return error.message;
+  }
+  
+  if (error instanceof RateLimitError) {
+    return 'Too many requests. Please wait a moment and try again.';
+  }
+  
+  if (error instanceof NotFoundError) {
+    return 'Resource not found';
+  }
+  
   if (error.name === 'TypeError' && error.message.includes('fetch')) {
     return 'Network error - please check your connection';
   }

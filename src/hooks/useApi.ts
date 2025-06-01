@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { apiClient, handleApiError } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { ValidationError, RateLimitError, NotFoundError } from '@/lib/errorTypes';
 
 // Custom hook for API calls with loading states and error handling
 export const useApi = () => {
@@ -32,11 +33,18 @@ export const useApi = () => {
       const errorMessage = handleApiError(err);
       setError(errorMessage);
       
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      // Don't show toast for validation errors or rate limiting in search
+      const shouldShowToast = !(err instanceof ValidationError) && 
+                             !(err instanceof RateLimitError) &&
+                             !errorMessage.includes('Search term is too long');
+      
+      if (shouldShowToast) {
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
       
       throw err;
     } finally {
