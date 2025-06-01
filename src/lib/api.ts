@@ -1,5 +1,6 @@
-
 // API configuration and CORS handling
+import { mockSearchEndpoint, simulateApiError } from './mockApiServer';
+
 const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // CORS configuration for API requests
@@ -11,10 +12,23 @@ const corsHeaders = {
   'Access-Control-Allow-Credentials': 'true',
 };
 
-// API client with CORS support
+// API client with CORS support and mock search endpoint
 export const apiClient = {
   async get(endpoint: string) {
     try {
+      // Handle mock search endpoint
+      if (endpoint.startsWith('/items/search')) {
+        const url = new URL(endpoint, 'http://localhost');
+        const query = url.searchParams.get('q') || '';
+        const limit = parseInt(url.searchParams.get('limit') || '10');
+        
+        console.log(`[API Client] Mock search request: query="${query}", limit=${limit}`);
+        
+        const response = await mockSearchEndpoint(query, limit);
+        return response.items; // Return items array for compatibility
+      }
+      
+      // Regular API calls
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'GET',
         headers: corsHeaders,
