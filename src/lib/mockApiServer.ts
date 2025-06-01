@@ -11,14 +11,14 @@ interface SearchResponse {
 
 // Mock database of items for search simulation
 const mockItems: Item[] = [
-  { id: '1', name: 'Office Chair', code: 'OFC001', description: 'Ergonomic office chair', ledgerId: '1' },
-  { id: '2', name: 'Desk Lamp', code: 'DSK002', description: 'LED desk lamp', ledgerId: '1' },
-  { id: '3', name: 'Printer Paper', code: 'PPR003', description: 'A4 printing paper', ledgerId: '2' },
-  { id: '4', name: 'Stapler', code: 'STP004', description: 'Heavy duty stapler', ledgerId: '1' },
-  { id: '5', name: 'File Cabinet', code: 'FLC005', description: '4-drawer file cabinet', ledgerId: '1' },
-  { id: '6', name: 'Computer Monitor', code: 'MON006', description: '24 inch LCD monitor', ledgerId: '3' },
-  { id: '7', name: 'Keyboard', code: 'KBD007', description: 'Wireless keyboard', ledgerId: '3' },
-  { id: '8', name: 'Mouse', code: 'MSE008', description: 'Optical mouse', ledgerId: '3' },
+  { id: '1', name: 'Office Chair', code: 'OFC001', description: 'Ergonomic office chair', ledgerId: '1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+  { id: '2', name: 'Desk Lamp', code: 'DSK002', description: 'LED desk lamp', ledgerId: '1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+  { id: '3', name: 'Printer Paper', code: 'PPR003', description: 'A4 printing paper', ledgerId: '2', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+  { id: '4', name: 'Stapler', code: 'STP004', description: 'Heavy duty stapler', ledgerId: '1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+  { id: '5', name: 'File Cabinet', code: 'FLC005', description: '4-drawer file cabinet', ledgerId: '1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+  { id: '6', name: 'Computer Monitor', code: 'MON006', description: '24 inch LCD monitor', ledgerId: '3', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+  { id: '7', name: 'Keyboard', code: 'KBD007', description: 'Wireless keyboard', ledgerId: '3', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+  { id: '8', name: 'Mouse', code: 'MSE008', description: 'Optical mouse', ledgerId: '3', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
 ];
 
 // Mock search endpoint implementation
