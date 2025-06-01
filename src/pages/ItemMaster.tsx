@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import ItemAutocomplete from '@/components/ItemAutocomplete';
+import AdvancedItemSearch from '@/components/AdvancedItemSearch';
 import { 
   Card, 
   CardContent, 
@@ -223,11 +223,14 @@ const ItemMaster = () => {
               </form>
             </Card>
 
-            {/* Item Search Demo */}
+            {/* Advanced Item Search */}
+            <AdvancedItemSearch onItemSelect={handleItemSelect} />
+
+            {/* Basic Item Search Demo */}
             <Card className="ap-card">
               <CardHeader>
-                <CardTitle>Item Search Autocomplete Demo</CardTitle>
-                <CardDescription>Search for items with autocomplete functionality.</CardDescription>
+                <CardTitle>Basic Item Search Demo</CardTitle>
+                <CardDescription>Simple autocomplete search functionality.</CardDescription>
               </CardHeader>
               <CardContent>
                 <ItemAutocomplete 
