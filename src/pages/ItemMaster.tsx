@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
+import ItemAutocomplete from '@/components/ItemAutocomplete';
 import { 
   Card, 
   CardContent, 
@@ -117,6 +118,15 @@ const ItemMaster = () => {
       });
     }
   };
+
+  // Handler for autocomplete item selection (for future use in stock management)
+  const handleItemSelect = (item: { id: string; name: string; code: string }) => {
+    console.log('Selected item:', item);
+    toast({
+      title: "Item Selected",
+      description: `Selected ${item.name} (${item.code})`,
+    });
+  };
   
   // Handler for deleting items
   const handleDeleteItem = (id: string, name: string, code: string) => {
@@ -211,6 +221,21 @@ const ItemMaster = () => {
                   </Button>
                 </CardFooter>
               </form>
+            </Card>
+
+            {/* Item Search Demo */}
+            <Card className="ap-card">
+              <CardHeader>
+                <CardTitle>Item Search Autocomplete Demo</CardTitle>
+                <CardDescription>Search for items with autocomplete functionality.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ItemAutocomplete 
+                  onItemSelect={handleItemSelect}
+                  placeholder="Start typing to search items..."
+                  className="w-full"
+                />
+              </CardContent>
             </Card>
             
             {/* Items Table */}
